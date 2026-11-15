@@ -1,6 +1,9 @@
 package io.github.x1wer.szabadzene.ui
 
+import android.net.Uri
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,10 +11,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
-import androidx.compose.material.icons.rounded.QueuePlayNext
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -21,15 +23,12 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,27 +38,35 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import io.github.x1wer.szabadzene.AppContainer
 import io.github.x1wer.szabadzene.R
-import io.github.x1wer.szabadzene.data.library.Track
 import io.github.x1wer.szabadzene.data.settings.SkipSettings
 import io.github.x1wer.szabadzene.playback.PlaybackEvent
 import io.github.x1wer.szabadzene.playback.PlaybackUiState
 import io.github.x1wer.szabadzene.playback.SkipDirection
-import io.github.x1wer.szabadzene.ui.components.FileInfoDialog
-import io.github.x1wer.szabadzene.ui.components.TrackAction
-import io.github.x1wer.szabadzene.ui.components.TrackActionsSheet
+import io.github.x1wer.szabadzene.ui.folders.FoldersScreen
+import io.github.x1wer.szabadzene.ui.library.CollectionDetailScreen
+import io.github.x1wer.szabadzene.ui.library.CollectionType
 import io.github.x1wer.szabadzene.ui.library.LibraryScreen
 import io.github.x1wer.szabadzene.ui.library.LibraryViewModel
 import io.github.x1wer.szabadzene.ui.player.FullPlayerContent
 import io.github.x1wer.szabadzene.ui.player.MiniPlayerContent
 import io.github.x1wer.szabadzene.ui.player.PlayerCallbacks
+import io.github.x1wer.szabadzene.ui.playlists.PlaylistDetailScreen
+import io.github.x1wer.szabadzene.ui.playlists.PlaylistsScreen
+import io.github.x1wer.szabadzene.ui.queue.QueueScreen
+import io.github.x1wer.szabadzene.ui.settings.HelpScreen
+import io.github.x1wer.szabadzene.ui.settings.LicensesScreen
 import io.github.x1wer.szabadzene.ui.settings.SettingsScreen
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -67,37 +74,22 @@ import kotlinx.coroutines.launch
 /** Az alkalmazás összetevői a felület számára. Tesztben null lehet. */
 val LocalAppContainer = staticCompositionLocalOf<AppContainer?> { null }
 
-/** A számsorok menüjének közös állapota: bármelyik lista megnyithatja. */
-@Stable
-class TrackMenuState {
-    var track by mutableStateOf<Track?>(null)
-        private set
-    var queueActions by mutableStateOf(true)
-        private set
-    var infoTrack by mutableStateOf<Track?>(null)
-
-    fun open(track: Track, withQueueActions: Boolean = true) {
-        queueActions = withQueueActions
-        this.track = track
-    }
-
-    fun close() {
-        track = null
-    }
-}
-
-val LocalTrackMenu = staticCompositionLocalOf { TrackMenuState() }
-
 private const val ROUTE_MAIN = "main"
 private const val ROUTE_PLAYER = "player"
-private const val TAB_LIBRARY = "library"
-private const val TAB_SETTINGS = "settings"
+private const val ROUTE_QUEUE = "queue"
 
-private data class Tab(val route: String, val label: Int, val icon: ImageVector)
+private const val GRAPH_LIBRARY = "tab_library"
+private const val GRAPH_PLAYLISTS = "tab_playlists"
+private const val GRAPH_FOLDERS = "tab_folders"
+private const val GRAPH_SETTINGS = "tab_settings"
+
+private data class Tab(val graph: String, val label: Int, val icon: ImageVector)
 
 private val tabs = listOf(
-    Tab(TAB_LIBRARY, R.string.nav_library, Icons.Rounded.LibraryMusic),
-    Tab(TAB_SETTINGS, R.string.nav_settings, Icons.Rounded.Settings),
+    Tab(GRAPH_LIBRARY, R.string.nav_library, Icons.Rounded.LibraryMusic),
+    Tab(GRAPH_PLAYLISTS, R.string.nav_playlists, Icons.AutoMirrored.Rounded.QueueMusic),
+    Tab(GRAPH_FOLDERS, R.string.nav_folders, Icons.Rounded.Folder),
+    Tab(GRAPH_SETTINGS, R.string.nav_settings, Icons.Rounded.Settings),
 )
 
 @Composable
@@ -105,12 +97,15 @@ fun AppRoot(openPlayerRequests: StateFlow<Int>) {
     val container = LocalAppContainer.current ?: return
     val nav = rememberNavController()
     val snackbar = remember { SnackbarHostState() }
-    val menu = remember { TrackMenuState() }
+    val menu = remember { MenuState() }
     val resources = LocalResources.current
+    val scope = rememberCoroutineScope()
     val libraryViewModel: LibraryViewModel = viewModel(factory = LibraryViewModel.factory(container))
 
     val playback by container.player.state.collectAsStateWithLifecycle()
     val skip by container.settings.skipSettings.collectAsStateWithLifecycle(SkipSettings())
+    val favorites by libraryViewModel.favoriteIds.collectAsStateWithLifecycle()
+    val isFavorite = playback.trackId?.let { it in favorites } == true
     val callbacks = remember(container) {
         val player = container.player
         PlayerCallbacks(
@@ -130,6 +125,17 @@ fun AppRoot(openPlayerRequests: StateFlow<Int>) {
             onCycleRepeat = player::cycleRepeat,
         )
     }
+    val fullCallbacks = callbacks.copy(
+        onToggleFavorite = {
+            val id = playback.trackId
+            if (id != null) {
+                scope.launch {
+                    if (id in favorites) container.playlists.removeFavorite(id) else container.playlists.addFavorites(listOf(id))
+                }
+            }
+        },
+        onOpenQueue = { nav.navigate(ROUTE_QUEUE) { launchSingleTop = true } },
+    )
 
     val openRequest by openPlayerRequests.collectAsState()
     LaunchedEffect(openRequest) {
@@ -154,7 +160,7 @@ fun AppRoot(openPlayerRequests: StateFlow<Int>) {
         }
     }
 
-    CompositionLocalProvider(LocalTrackMenu provides menu) {
+    CompositionLocalProvider(LocalMenuState provides menu) {
         NavHost(nav, startDestination = ROUTE_MAIN, modifier = Modifier.fillMaxSize()) {
             composable(ROUTE_MAIN) {
                 MainScaffold(
@@ -171,17 +177,18 @@ fun AppRoot(openPlayerRequests: StateFlow<Int>) {
                 enterTransition = { slideInVertically { it } },
                 popExitTransition = { slideOutVertically { it } },
             ) {
-                val tracks by libraryViewModel.tracks.collectAsStateWithLifecycle()
-                val currentTrack = tracks?.firstOrNull { it.id == playback.trackId }
+                val tracks by libraryViewModel.allTracks.collectAsStateWithLifecycle()
+                val currentTrack = tracks.firstOrNull { it.id == playback.trackId }
                 Box(Modifier.fillMaxSize()) {
                     FullPlayerContent(
                         state = playback,
                         skip = skip,
-                        callbacks = callbacks,
+                        callbacks = fullCallbacks,
                         onMinimize = { nav.popBackStack() },
                         onMoreActions = currentTrack?.let { track ->
-                            { menu.open(track, withQueueActions = false) }
+                            { menu.open(track, TrackMenuContext.NowPlaying) }
                         },
+                        isFavorite = isFavorite,
                     )
                     SnackbarHost(
                         snackbar,
@@ -191,10 +198,29 @@ fun AppRoot(openPlayerRequests: StateFlow<Int>) {
                     )
                 }
             }
+            composable(
+                ROUTE_QUEUE,
+                enterTransition = { slideInHorizontally { it } },
+                popExitTransition = { slideOutHorizontally { it } },
+            ) {
+                val tracks by libraryViewModel.allTracks.collectAsStateWithLifecycle()
+                Box(Modifier.fillMaxSize()) {
+                    QueueScreen(allTracks = tracks, onBack = { nav.popBackStack() })
+                    SnackbarHost(
+                        snackbar,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .navigationBarsPadding(),
+                    )
+                }
+            }
         }
-        TrackMenuHost(menu, snackbar)
+        MenuHost(menu, snackbar)
     }
 }
+
+private fun collectionRoute(prefix: String, type: CollectionType, key: String) =
+    "$prefix/collection/${type.name}/${Uri.encode(key)}"
 
 @Composable
 private fun MainScaffold(
@@ -225,89 +251,109 @@ private fun MainScaffold(
                 NavigationBar {
                     tabs.forEach { tab ->
                         NavigationBarItem(
-                            selected = destination?.hierarchy?.any { it.route == tab.route } == true,
-                            onClick = {
-                                tabNav.navigate(tab.route) {
-                                    popUpTo(tabNav.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
+                            selected = destination?.hierarchy?.any { it.route == tab.graph } == true,
+                            onClick = { tabNav.navigateToTab(tab.graph) },
                             icon = { Icon(tab.icon, contentDescription = null) },
-                            label = { Text(stringResource(tab.label)) },
-                            modifier = Modifier.testTag("tab_${tab.route}"),
+                            label = { Text(stringResource(tab.label), maxLines = 1) },
+                            modifier = Modifier.testTag(tab.graph),
                         )
                     }
                 }
             }
         },
     ) { inner ->
-        NavHost(tabNav, startDestination = TAB_LIBRARY, modifier = Modifier.fillMaxSize()) {
-            composable(TAB_LIBRARY) {
-                LibraryScreen(
-                    viewModel = libraryViewModel,
-                    currentMediaId = playback.mediaId,
-                    contentPadding = inner,
-                )
+        val current = playback.mediaId
+        NavHost(tabNav, startDestination = GRAPH_LIBRARY, modifier = Modifier.fillMaxSize()) {
+            navigation(startDestination = "library", route = GRAPH_LIBRARY) {
+                composable("library") {
+                    LibraryScreen(
+                        viewModel = libraryViewModel,
+                        currentMediaId = current,
+                        contentPadding = inner,
+                        onOpenCollection = { type, key -> tabNav.navigate(collectionRoute("library", type, key)) },
+                    )
+                }
+                collectionDestination("library", libraryViewModel, current, inner, tabNav)
             }
-            composable(TAB_SETTINGS) { SettingsScreen(contentPadding = inner) }
+            navigation(startDestination = "playlists", route = GRAPH_PLAYLISTS) {
+                composable("playlists") {
+                    PlaylistsScreen(
+                        viewModel = libraryViewModel,
+                        contentPadding = inner,
+                        onOpenPlaylist = { id -> tabNav.navigate("playlists/playlist/$id") },
+                    )
+                }
+                composable(
+                    "playlists/playlist/{id}",
+                    arguments = listOf(navArgument("id") { type = NavType.LongType }),
+                ) { entry ->
+                    PlaylistDetailScreen(
+                        viewModel = libraryViewModel,
+                        playlistId = entry.arguments?.getLong("id") ?: 0L,
+                        currentMediaId = current,
+                        contentPadding = inner,
+                        onBack = { tabNav.popBackStack() },
+                    )
+                }
+            }
+            navigation(startDestination = "folders", route = GRAPH_FOLDERS) {
+                composable("folders") {
+                    FoldersScreen(
+                        viewModel = libraryViewModel,
+                        contentPadding = inner,
+                        onOpenFolder = { key -> tabNav.navigate(collectionRoute("folders", CollectionType.FOLDER, key)) },
+                    )
+                }
+                collectionDestination("folders", libraryViewModel, current, inner, tabNav)
+            }
+            navigation(startDestination = "settings", route = GRAPH_SETTINGS) {
+                composable("settings") {
+                    SettingsScreen(
+                        contentPadding = inner,
+                        snackbar = snackbar,
+                        onOpenHelp = { tabNav.navigate("settings/help") },
+                        onOpenLicenses = { tabNav.navigate("settings/licenses") },
+                    )
+                }
+                composable("settings/help") { HelpScreen(inner) { tabNav.popBackStack() } }
+                composable("settings/licenses") { LicensesScreen(inner) { tabNav.popBackStack() } }
+            }
         }
     }
 }
 
-/** A számmenü alsó panelje és a fájladatok ablak – egy helyen, minden lista számára. */
-@Composable
-private fun TrackMenuHost(menu: TrackMenuState, snackbar: SnackbarHostState) {
-    val container = LocalAppContainer.current ?: return
-    val scope = rememberCoroutineScope()
-    val resources = LocalResources.current
-    val unknownArtist = stringResource(R.string.unknown_artist)
-    val track = menu.track
-    if (track != null) {
-        val actions = buildList {
-            if (menu.queueActions) {
-                add(
-                    TrackAction(
-                        label = stringResource(R.string.action_play_next),
-                        icon = Icons.Rounded.QueuePlayNext,
-                        tag = "action_play_next",
-                    ) {
-                        container.player.playNext(track)
-                        scope.launch {
-                            snackbar.showSnackbar(resources.getString(R.string.toast_play_next, track.title))
-                        }
-                    },
-                )
-                add(
-                    TrackAction(
-                        label = stringResource(R.string.action_add_to_queue),
-                        icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
-                        tag = "action_add_to_queue",
-                    ) {
-                        container.player.addToQueue(track)
-                        scope.launch {
-                            snackbar.showSnackbar(resources.getString(R.string.toast_added_to_queue, track.title))
-                        }
-                    },
-                )
-            }
-            add(
-                TrackAction(
-                    label = stringResource(R.string.action_file_info),
-                    icon = Icons.Rounded.Info,
-                    tag = "action_file_info",
-                ) { menu.infoTrack = track },
-            )
-        }
-        TrackActionsSheet(
-            title = track.title,
-            subtitle = track.artist ?: unknownArtist,
-            trackId = track.id,
-            actions = actions,
-            onDismiss = { menu.close() },
+private fun androidx.navigation.NavGraphBuilder.collectionDestination(
+    prefix: String,
+    viewModel: LibraryViewModel,
+    currentMediaId: String?,
+    contentPadding: androidx.compose.foundation.layout.PaddingValues,
+    tabNav: NavHostController,
+) {
+    composable(
+        "$prefix/collection/{type}/{key}",
+        arguments = listOf(
+            navArgument("type") { type = NavType.StringType },
+            navArgument("key") { type = NavType.StringType },
+        ),
+    ) { entry ->
+        val type = CollectionType.valueOf(entry.arguments?.getString("type") ?: CollectionType.ALBUM.name)
+        val key = Uri.decode(entry.arguments?.getString("key").orEmpty())
+        CollectionDetailScreen(
+            viewModel = viewModel,
+            type = type,
+            key = key,
+            currentMediaId = currentMediaId,
+            contentPadding = contentPadding,
+            onBack = { tabNav.popBackStack() },
         )
     }
-    menu.infoTrack?.let { info ->
-        FileInfoDialog(track = info, onDismiss = { menu.infoTrack = null })
+}
+
+/** Fülváltás: a fülek saját visszalépési veremmel, állapotukat megőrizve. */
+private fun NavHostController.navigateToTab(graph: String) {
+    navigate(graph) {
+        popUpTo(graph.let { this@navigateToTab.graph.findStartDestination().id }) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }

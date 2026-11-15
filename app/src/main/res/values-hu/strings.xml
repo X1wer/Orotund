@@ -83,4 +83,142 @@
     <string name="file_info_kbps">%1$d kbit/s</string>
     <string name="file_info_hz">%1$d Hz</string>
     <string name="file_info_unknown">—</string>
+
+    <!-- 2. rész: navigáció -->
+    <string name="nav_playlists">Listák</string>
+    <string name="nav_folders">Mappák</string>
+    <string name="cd_back">Vissza</string>
+
+    <!-- Zenetár fülek, keresés, rendezés -->
+    <string name="library_tab_tracks">Számok</string>
+    <string name="library_tab_albums">Albumok</string>
+    <string name="library_tab_artists">Előadók</string>
+    <string name="library_tab_genres">Műfajok</string>
+    <string name="unknown_genre">Ismeretlen műfaj</string>
+    <string name="unknown_folder">Ismeretlen mappa</string>
+    <string name="cd_search">Keresés</string>
+    <string name="cd_close_search">Keresés bezárása</string>
+    <string name="cd_clear_search">Keresés törlése</string>
+    <string name="search_hint">Cím, előadó, album vagy fájlnév</string>
+    <string name="search_prompt">Írd be, mit keresel. Az ékezet és a kis- vagy nagybetű nem számít.</string>
+    <string name="search_no_results">Nincs találat</string>
+    <string name="cd_sort">Rendezés</string>
+    <string name="sort_title">Cím</string>
+    <string name="sort_artist">Előadó</string>
+    <string name="sort_duration">Időtartam</string>
+    <string name="sort_date_added">Hozzáadás ideje</string>
+    <string name="sort_descending">Csökkenő sorrend</string>
+    <string name="collection_empty">Itt nincs szám.</string>
+    <plurals name="track_count">
+        <item quantity="one">%1$d szám</item>
+        <item quantity="other">%1$d szám</item>
+    </plurals>
+
+    <!-- Menük -->
+    <string name="cd_collection_actions">Műveletek: %1$s</string>
+    <string name="action_play">Lejátszás</string>
+    <string name="action_shuffle">Keverés</string>
+    <string name="action_add_to_playlist">Hozzáadás listához…</string>
+    <string name="action_add_favorite">Hozzáadás a kedvencekhez</string>
+    <string name="action_remove_favorite">Eltávolítás a kedvencek közül</string>
+    <string name="action_remove_from_queue">Eltávolítás a várólistából</string>
+    <string name="action_remove_from_playlist">Eltávolítás ebből a listából</string>
+    <string name="action_share">Megosztás</string>
+    <string name="action_exclude_folder">Mappa elrejtése a zenetárból</string>
+    <string name="action_move_up">Mozgatás fel</string>
+    <string name="action_move_down">Mozgatás le</string>
+    <string name="cd_drag_handle">Húzd az átrendezéshez</string>
+    <string name="share_chooser_title">Szám megosztása</string>
+    <string name="toast_added_to_playlist">Hozzáadva ehhez: „%1$s”</string>
+    <plurals name="toast_tracks_play_next">
+        <item quantity="one">%1$d szám következik</item>
+        <item quantity="other">%1$d szám következik</item>
+    </plurals>
+    <plurals name="toast_tracks_added_to_queue">
+        <item quantity="one">%1$d szám a várólistán</item>
+        <item quantity="other">%1$d szám a várólistán</item>
+    </plurals>
+
+    <!-- Lejátszási listák -->
+    <string name="playlists_title">Lejátszási listák</string>
+    <string name="favorites_title">Kedvencek</string>
+    <string name="playlist_new">Új lista</string>
+    <string name="playlist_name_label">Név</string>
+    <string name="playlist_rename">Átnevezés</string>
+    <string name="playlist_delete_title">Törlöd a listát?</string>
+    <string name="playlist_delete_message">A(z) „%1$s” lista törlődik. A zenefájlok a telefonon maradnak.</string>
+    <string name="playlists_empty">Még nincs saját listád. Hozz létre egyet a fenti gombbal, vagy egy szám menüjéből.</string>
+    <string name="playlist_empty">A lista üres. Számot a szám menüjéből adhatsz hozzá.</string>
+    <string name="favorites_empty">Még nincs kedvenced. Használd a lejátszó szív gombját, vagy egy szám menüjében a „Hozzáadás a kedvencekhez” pontot.</string>
+    <plurals name="add_to_playlist_title">
+        <item quantity="one">%1$d szám hozzáadása ehhez…</item>
+        <item quantity="other">%1$d szám hozzáadása ehhez…</item>
+    </plurals>
+    <string name="dialog_create">Létrehozás</string>
+    <string name="dialog_save">Mentés</string>
+    <string name="dialog_delete">Törlés</string>
+
+    <!-- Mappák -->
+    <string name="folders_title">Mappák</string>
+    <string name="folders_empty">Nincs zenét tartalmazó mappa.</string>
+
+    <!-- Várólista -->
+    <string name="queue_title">Várólista</string>
+    <string name="queue_empty">A várólista üres.</string>
+    <string name="queue_shuffle_note">Be van kapcsolva a keverés, ezért a számok kevert sorrendben látszanak. Átrendezéshez kapcsold ki a keverést.</string>
+    <string name="cd_open_queue">Várólista megnyitása</string>
+    <string name="cd_favorite_on">Kedvenc: be</string>
+    <string name="cd_favorite_off">Kedvenc: ki</string>
+
+    <!-- Beállítások -->
+    <string name="settings_section_appearance">Megjelenés</string>
+    <string name="settings_theme">Téma</string>
+    <string name="theme_system">Rendszer szerint</string>
+    <string name="theme_light">Világos</string>
+    <string name="theme_dark">Sötét</string>
+    <string name="settings_dynamic_color">Rendszerszínek</string>
+    <string name="settings_dynamic_color_desc">A háttérkép színeinek használata</string>
+    <string name="settings_accent">Kiemelőszín</string>
+    <string name="accent_green">Zöld</string>
+    <string name="accent_blue">Kék</string>
+    <string name="accent_purple">Lila</string>
+    <string name="accent_orange">Narancs</string>
+    <string name="accent_red">Piros</string>
+    <string name="settings_language">Nyelv</string>
+    <string name="language_system">Rendszer szerint</string>
+    <string name="settings_section_headset">Fejhallgató és Bluetooth</string>
+    <string name="settings_pause_on_disconnect">Szünet leválasztáskor</string>
+    <string name="settings_pause_on_disconnect_desc">Szünet a fejhallgató kihúzásakor vagy a Bluetooth-hang megszakadásakor</string>
+    <string name="settings_resume_on_reconnect">Folytatás visszacsatlakozáskor</string>
+    <string name="settings_resume_on_reconnect_desc">Ha 30 percen belül újra csatlakozik egy fejhallgató vagy Bluetooth-eszköz, a zene folytatódik</string>
+    <string name="settings_section_library">Zenetár</string>
+    <string name="settings_rescan">Zenetár újraolvasása</string>
+    <string name="settings_rescan_desc">Új és eltávolított zenefájlok keresése</string>
+    <string name="toast_rescan_started">Zenefájlok keresése…</string>
+    <string name="settings_min_duration">Rövid hangfájlok elrejtése</string>
+    <string name="min_duration_off">Ki</string>
+    <string name="min_duration_value">%1$d másodpercnél rövidebbek</string>
+    <string name="settings_excluded_folders">Elrejtett mappák</string>
+    <string name="settings_excluded_none">Nincs</string>
+    <string name="settings_excluded_empty">Nincs elrejtett mappa. Mappát a Mappák fülön, a mappa menüjéből rejthetsz el.</string>
+    <string name="cd_include_folder">Újra látható: %1$s</string>
+    <string name="settings_help">Súgó</string>
+    <string name="settings_help_desc">A fontos funkciók használata</string>
+    <string name="settings_licenses">Licencek</string>
+    <string name="settings_licenses_desc">Az alkalmazás nyílt forráskódú összetevői</string>
+    <string name="licenses_intro">A SzabadZene szabad szoftver, GPL-3.0 licenccel. Az alábbi nyílt forráskódú összetevőket használja:</string>
+
+    <!-- Súgó -->
+    <string name="help_menu_title">Számmenü</string>
+    <string name="help_menu_body">Minden szám jobb oldalán a ⋮ terület nyitja meg a szám műveleteit. A teljes terület koppintható, és sosem indít lejátszást.</string>
+    <string name="help_skip_title">Ugrógombok</string>
+    <string name="help_skip_body">A csúszka alatti −/+ gombok az aktuális számon belül ugranak. Mindig látszanak, a minilejátszóban is. A lépést irányonként a Beállításokban adhatod meg.</string>
+    <string name="help_queue_title">Várólista</string>
+    <string name="help_queue_body">A várólistát a lejátszóból nyithatod meg. A fogantyút húzva átrendezheted, koppintásra az adott szám szól, a menüből eltávolíthatod. A „Lejátszás következőként” keverés közben is a soron következő helyre teszi a számot.</string>
+    <string name="help_playlists_title">Listák és kedvencek</string>
+    <string name="help_playlists_body">Számot, albumot vagy mappát a menüjéből adhatsz listához. A listából eltávolított szám fájlja nem törlődik.</string>
+    <string name="help_folders_title">Mappák</string>
+    <string name="help_folders_body">Elrejtheted a mappákat, amelyeket nem akarsz a zenetárban látni (pl. csengőhangok). A Beállításokban újra láthatóvá teheted őket.</string>
+    <string name="help_headset_title">Fejhallgató</string>
+    <string name="help_headset_body">A fejhallgató kihúzásakor vagy a Bluetooth megszakadásakor a zene szünetel. Visszacsatlakozáskor csak akkor folytatódik, ha ezt a Beállításokban bekapcsolod.</string>
 </resources>

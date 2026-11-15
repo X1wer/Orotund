@@ -11,6 +11,7 @@ import android.provider.MediaStore
 import android.util.Log
 import androidx.core.content.ContextCompat
 import io.github.x1wer.szabadzene.data.db.TrackDao
+import io.github.x1wer.szabadzene.data.settings.LibraryFilter
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,15 +19,17 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.text.Collator
-import java.util.Locale
 
 /**
  * A zenetár egyetlen forrása. A MediaStore-t a háttérben olvassa be, az eredményt a helyi
@@ -35,6 +38,7 @@ import java.util.Locale
 class LibraryRepository(
     private val context: Context,
     private val dao: TrackDao,
+    filter: Flow<LibraryFilter>,
     private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
@@ -51,12 +55,25 @@ class LibraryRepository(
     private var observerRegistered = false
     private var pendingRescan: Job? = null
 
-    /** Minden szám, magyar ábécé szerint cím alapján rendezve. */
-    val tracks: Flow<List<Track>> = dao.observeAll().map { entities ->
-        val collator = Collator.getInstance(Locale.forLanguageTag("hu-HU")).apply {
-            strength = Collator.SECONDARY
+    /** Minden beolvasott szám (szűrés nélkül), magyar ábécé szerint cím alapján rendezve. */
+    val allTracks: Flow<List<Track>> = dao.observeAll()
+        .map { entities ->
+            val collator = hungarianCollator()
+            entities.map { it.toTrack() }.sortedWith { a, b -> collator.compare(a.title, b.title) }
         }
-        entities.map { it.toTrack() }.sortedWith { a, b -> collator.compare(a.title, b.title) }
+        .flowOn(ioDispatcher)
+        .shareIn(scope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+
+    /** A zenetárban látható számok: a kizárt mappák és a túl rövid fájlok nélkül. */
+    val tracks: Flow<List<Track>> = combine(allTracks, filter) { list, currentFilter ->
+        applyFilter(list, currentFilter)
+    }
+        .flowOn(ioDispatcher)
+        .shareIn(scope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+
+    /** Számok azonosító szerint (a várólista visszaállításához); a hiányzók kimaradnak. */
+    suspend fun tracksByIds(ids: Collection<Long>): Map<Long, Track> = withContext(ioDispatcher) {
+        ids.distinct().chunked(900).flatMap { dao.byIds(it) }.associate { it.id to it.toTrack() }
     }
 
     fun hasPermission(): Boolean = ContextCompat.checkSelfPermission(context, requiredPermission()) ==

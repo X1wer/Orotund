@@ -15,6 +15,10 @@ interface TrackDao {
     @Query("SELECT COUNT(*) FROM tracks")
     suspend fun count(): Int
 
+    /** Legfeljebb 900 azonosítóval hívd (régi SQLite-változó-korlát). */
+    @Query("SELECT * FROM tracks WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<Long>): List<TrackEntity>
+
     @Query("DELETE FROM tracks")
     suspend fun deleteAll()
 

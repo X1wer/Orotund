@@ -68,6 +68,7 @@ fun FullPlayerContent(
     onMinimize: () -> Unit,
     onMoreActions: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    isFavorite: Boolean = false,
 ) {
     Surface(modifier = modifier.testTag(FullPlayerTags.ROOT).fillMaxSize()) {
         BoxWithConstraints(
@@ -76,9 +77,9 @@ fun FullPlayerContent(
                 .windowInsetsPadding(WindowInsets.safeDrawing),
         ) {
             if (maxWidth > maxHeight) {
-                LandscapePlayer(state, skip, callbacks, onMinimize, onMoreActions, maxWidth, maxHeight)
+                LandscapePlayer(state, skip, callbacks, onMinimize, onMoreActions, maxWidth, maxHeight, isFavorite)
             } else {
-                PortraitPlayer(state, skip, callbacks, onMinimize, onMoreActions, maxHeight)
+                PortraitPlayer(state, skip, callbacks, onMinimize, onMoreActions, maxHeight, isFavorite)
             }
         }
     }
@@ -93,6 +94,7 @@ private fun PortraitPlayer(
     onMinimize: () -> Unit,
     onMoreActions: (() -> Unit)?,
     viewportHeight: Dp,
+    isFavorite: Boolean,
 ) {
     val roomy = viewportHeight >= 640.dp && LocalDensity.current.fontScale < 1.5f
     Box(
@@ -111,7 +113,7 @@ private fun PortraitPlayer(
                     Spacer(Modifier.height(8.dp))
                     PlayerSeekBlock(state, callbacks)
                     Spacer(Modifier.height(4.dp))
-                    PlayerButtonsBlock(state, skip, callbacks)
+                    PlayerButtonsBlock(state, skip, callbacks, isFavorite)
                     Spacer(Modifier.height(8.dp))
                 }
             },
@@ -132,6 +134,7 @@ private fun LandscapePlayer(
     onMoreActions: (() -> Unit)?,
     maxWidth: Dp,
     maxHeight: Dp,
+    isFavorite: Boolean,
 ) {
     val fontScale = LocalDensity.current.fontScale
     val artSize = min(maxHeight - 32.dp, maxWidth * 0.32f)
@@ -173,7 +176,7 @@ private fun LandscapePlayer(
                     .heightIn(min = maxHeight),
                 verticalArrangement = Arrangement.Center,
             ) {
-                PlayerButtonsBlock(state, skip, callbacks)
+                PlayerButtonsBlock(state, skip, callbacks, isFavorite)
             }
         }
     }
@@ -325,12 +328,17 @@ private fun PlayerSeekBlock(state: PlaybackUiState, callbacks: PlayerCallbacks) 
 
 /** Az ugrógombok (közvetlenül a csúszka alatt), alatta a vezérlősor és a módok. */
 @Composable
-private fun PlayerButtonsBlock(state: PlaybackUiState, skip: SkipSettings, callbacks: PlayerCallbacks) {
+private fun PlayerButtonsBlock(
+    state: PlaybackUiState,
+    skip: SkipSettings,
+    callbacks: PlayerCallbacks,
+    isFavorite: Boolean,
+) {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         SkipRow(state = state, skip = skip, onSkip = callbacks.onSkip)
         Spacer(Modifier.height(12.dp))
         TransportRow(state = state, callbacks = callbacks)
         Spacer(Modifier.height(4.dp))
-        ModeRow(state = state, callbacks = callbacks)
+        ModeRow(state = state, callbacks = callbacks, isFavorite = isFavorite)
     }
 }

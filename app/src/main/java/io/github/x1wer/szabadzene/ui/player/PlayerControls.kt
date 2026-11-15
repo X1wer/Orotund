@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
@@ -54,6 +57,10 @@ data class PlayerCallbacks(
     val onSkip: (SkipDirection) -> Unit = {},
     val onToggleShuffle: () -> Unit = {},
     val onCycleRepeat: () -> Unit = {},
+    /** Null esetén a kedvenc kapcsoló nem jelenik meg. */
+    val onToggleFavorite: (() -> Unit)? = null,
+    /** Null esetén a várólista gomb nem jelenik meg. */
+    val onOpenQueue: (() -> Unit)? = null,
 )
 
 object PlayerTags {
@@ -63,6 +70,8 @@ object PlayerTags {
     const val NEXT = "next"
     const val SHUFFLE = "shuffle"
     const val REPEAT = "repeat"
+    const val FAVORITE = "favorite"
+    const val QUEUE = "queue"
     const val SKIP_ROW = "skip_row"
 }
 
@@ -246,6 +255,7 @@ fun ModeRow(
     state: PlaybackUiState,
     callbacks: PlayerCallbacks,
     modifier: Modifier = Modifier,
+    isFavorite: Boolean = false,
 ) {
     val active = MaterialTheme.colorScheme.primary
     val inactive = LocalContentColor.current.copy(alpha = 0.7f)
@@ -268,6 +278,33 @@ fun ModeRow(
                     if (state.shuffle) R.string.cd_shuffle_on else R.string.cd_shuffle_off,
                 ),
             )
+        }
+        callbacks.onToggleFavorite?.let { toggle ->
+            IconButton(
+                onClick = toggle,
+                enabled = state.hasMedia,
+                colors = IconButtonDefaults.iconButtonColors(contentColor = if (isFavorite) active else inactive),
+                modifier = Modifier
+                    .testTag(PlayerTags.FAVORITE)
+                    .size(56.dp),
+            ) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    contentDescription = stringResource(if (isFavorite) R.string.cd_favorite_on else R.string.cd_favorite_off),
+                )
+            }
+        }
+        callbacks.onOpenQueue?.let { open ->
+            IconButton(
+                onClick = open,
+                enabled = state.hasMedia,
+                colors = IconButtonDefaults.iconButtonColors(contentColor = inactive),
+                modifier = Modifier
+                    .testTag(PlayerTags.QUEUE)
+                    .size(56.dp),
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = stringResource(R.string.cd_open_queue))
+            }
         }
         val repeatOn = state.repeat != RepeatSetting.OFF
         IconButton(

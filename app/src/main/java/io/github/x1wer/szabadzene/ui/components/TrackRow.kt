@@ -60,6 +60,8 @@ fun TrackRow(
     onPlay: () -> Unit,
     onMenu: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Opcionális bal oldali elem (pl. átrendező fogantyú); nem fedi a lejátszó törzset. */
+    leading: (@Composable () -> Unit)? = null,
 ) {
     val menuDescription = stringResource(R.string.cd_track_actions, title)
     Row(
@@ -70,13 +72,14 @@ fun TrackRow(
             .heightIn(min = TrackRowMinHeight),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        leading?.invoke()
         Row(
             modifier = Modifier
                 .testTag(TrackRowTags.BODY)
                 .weight(1f)
                 .fillMaxHeight()
                 .clickable(onClick = onPlay)
-                .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                .padding(start = if (leading == null) 16.dp else 4.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TrackArtwork(

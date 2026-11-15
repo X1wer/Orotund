@@ -50,6 +50,16 @@
             </intent-filter>
         </service>
 
+        <!-- Fejhallgató/Bluetooth lejátszógomb, amikor az app nem fut: a szolgáltatás a mentett
+             várólistával folytat (PlaybackService.onPlaybackResumption). -->
+        <receiver
+            android:name="androidx.media3.session.MediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+
         <!-- Az Android 13 előtti rendszereken az alkalmazásszintű nyelvválasztást az AppCompat tárolja. -->
         <service
             android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"

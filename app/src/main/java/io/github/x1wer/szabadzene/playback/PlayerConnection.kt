@@ -7,6 +7,7 @@ import androidx.annotation.OptIn
 import androidx.core.content.ContextCompat
 import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.session.MediaController
@@ -53,6 +54,15 @@ data class PlaybackUiState(
     val trackId: Long? get() = mediaId?.toLongOrNull()
 }
 
+/** A várólista egy eleme a felület számára. [index] az alaplista-index (a műveletekhez). */
+data class QueueEntry(
+    val index: Int,
+    val mediaId: String,
+    val title: String,
+    val artist: String?,
+    val isCurrent: Boolean,
+)
+
 sealed interface PlaybackEvent {
     data class Error(val title: String, val stopped: Boolean) : PlaybackEvent
 }
@@ -69,6 +79,11 @@ class PlayerConnection(
     private val _state = MutableStateFlow(PlaybackUiState())
     val state: StateFlow<PlaybackUiState> = _state.asStateFlow()
 
+    private val _queue = MutableStateFlow<List<QueueEntry>>(emptyList())
+
+    /** A várólista lejátszási sorrendben (keverésnél a kevert sorrendben). */
+    val queue: StateFlow<List<QueueEntry>> = _queue.asStateFlow()
+
     private val _events = MutableSharedFlow<PlaybackEvent>(extraBufferCapacity = 8)
     val events: SharedFlow<PlaybackEvent> = _events.asSharedFlow()
 
@@ -80,7 +95,18 @@ class PlayerConnection(
     private val pendingActions = ArrayDeque<(MediaController) -> Unit>()
 
     private val playerListener = object : Player.Listener {
-        override fun onEvents(player: Player, events: Player.Events) = publish()
+        override fun onEvents(player: Player, events: Player.Events) {
+            publish()
+            if (events.containsAny(
+                    Player.EVENT_TIMELINE_CHANGED,
+                    Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                    Player.EVENT_MEDIA_ITEM_TRANSITION,
+                    Player.EVENT_MEDIA_METADATA_CHANGED,
+                )
+            ) {
+                publishQueue()
+            }
+        }
     }
 
     private val controllerListener = object : MediaController.Listener {
@@ -127,6 +153,7 @@ class PlayerConnection(
                 controller = connected
                 connected.addListener(playerListener)
                 publish()
+                publishQueue()
                 while (pendingActions.isNotEmpty()) pendingActions.removeFirst().invoke(connected)
                 startPositionUpdates()
             },
@@ -167,22 +194,70 @@ class PlayerConnection(
         }
     }
 
-    fun playNext(track: Track) = withController { c ->
-        if (c.mediaItemCount == 0) {
-            c.setMediaItem(track.toMediaItem())
+    /** A lista lejátszása kevert sorrendben (a keverés bekapcsol). */
+    fun playShuffled(tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        val items = tracks.map { it.toMediaItem() }
+        withController { c ->
+            c.shuffleModeEnabled = true
+            // resetPosition = true: a kevert sorrend első elemével indul.
+            c.setMediaItems(items, true)
             c.prepare()
-        } else {
-            c.addMediaItem(c.currentMediaItemIndex + 1, track.toMediaItem())
+            c.play()
         }
     }
 
-    fun addToQueue(track: Track) = withController { c ->
-        if (c.mediaItemCount == 0) {
-            c.setMediaItem(track.toMediaItem())
-            c.prepare()
-        } else {
-            c.addMediaItem(track.toMediaItem())
+    /** Számok beszúrása közvetlenül az aktuális szám után (keverés közben is ezek jönnek). */
+    fun playNext(tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        val items = tracks.map { it.toMediaItem() }
+        withController { c ->
+            if (c.mediaItemCount == 0) {
+                c.setMediaItems(items)
+                c.prepare()
+            } else {
+                c.addMediaItems(c.currentMediaItemIndex + 1, items)
+            }
         }
+    }
+
+    /** Számok hozzáfűzése a várólista végéhez. */
+    fun addToQueue(tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        val items = tracks.map { it.toMediaItem() }
+        withController { c ->
+            if (c.mediaItemCount == 0) {
+                c.setMediaItems(items)
+                c.prepare()
+            } else {
+                c.addMediaItems(items)
+            }
+        }
+    }
+
+    fun playNext(track: Track) = playNext(listOf(track))
+
+    fun addToQueue(track: Track) = addToQueue(listOf(track))
+
+    /** A várólista egy elemének lejátszása (alaplista-index). */
+    fun playQueueItem(index: Int) = withController { c ->
+        if (index in 0 until c.mediaItemCount) {
+            c.seekTo(index, C.TIME_UNSET)
+            c.prepare()
+            c.play()
+        }
+    }
+
+    /** Átrendezés a várólistában (alaplista-indexek). */
+    fun moveQueueItem(from: Int, to: Int) = withController { c ->
+        if (from in 0 until c.mediaItemCount && to in 0 until c.mediaItemCount && from != to) {
+            c.moveMediaItem(from, to)
+        }
+    }
+
+    /** Eltávolítás a várólistából (a fájlt nem érinti). */
+    fun removeQueueItem(index: Int) = withController { c ->
+        if (index in 0 until c.mediaItemCount) c.removeMediaItem(index)
     }
 
     fun togglePlayPause() = withController { c -> Util.handlePlayPauseButtonAction(c) }
@@ -224,6 +299,32 @@ class PlayerConnection(
                 delay(if (_state.value.isPlaying) 250L else 1_000L)
             }
         }
+    }
+
+    private fun publishQueue() {
+        val c = controller ?: return
+        val timeline = c.currentTimeline
+        if (timeline.isEmpty) {
+            _queue.value = emptyList()
+            return
+        }
+        val shuffle = c.shuffleModeEnabled
+        val window = Timeline.Window()
+        val current = c.currentMediaItemIndex
+        val result = ArrayList<QueueEntry>(timeline.windowCount)
+        var index = timeline.getFirstWindowIndex(shuffle)
+        while (index != C.INDEX_UNSET && result.size < timeline.windowCount) {
+            val item = timeline.getWindow(index, window).mediaItem
+            result += QueueEntry(
+                index = index,
+                mediaId = item.mediaId,
+                title = item.mediaMetadata.title?.toString().orEmpty(),
+                artist = item.mediaMetadata.artist?.toString(),
+                isCurrent = index == current,
+            )
+            index = timeline.getNextWindowIndex(index, Player.REPEAT_MODE_OFF, shuffle)
+        }
+        _queue.value = result
     }
 
     private fun publish() {

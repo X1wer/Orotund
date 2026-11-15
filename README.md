@@ -10,6 +10,15 @@ Két dologra külön figyel:
 - **Állandóan látható ugrógombok:** „−10 mp” / „+10 mp” a teljes és az alsó minilejátszóban is.
   A lépés irányonként állítható (5, 10, 15, 30 vagy 60 mp).
 
+További funkciók:
+
+- zenetár számok, albumok, előadók, műfajok és mappák szerint; ékezetfüggetlen keresés, rendezés;
+- kedvencek és saját lejátszási listák (áthúzással átrendezhetők);
+- szerkeszthető várólista; a „Lejátszás következőként” keverés közben is a soron következő helyre kerül;
+- a várólista, a pozíció és a módok újraindítás után is megmaradnak (a zene magától nem indul el);
+- világos/sötét téma, rendszerszínek vagy választható kiemelőszín, magyar és angol felület;
+- mappák elrejtése, rövid hangfájlok szűrése, megosztás, fájladatok.
+
 > Állapot: fejlesztés alatt (0.1.0). A részletek a `docs/ALLAPOT.md` fájlban.
 
 ## Telepítés

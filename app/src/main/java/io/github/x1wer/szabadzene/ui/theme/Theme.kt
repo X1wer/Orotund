@@ -10,6 +10,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import io.github.x1wer.szabadzene.data.settings.AccentColor
 
 /** Saját, zöldeskék alapszín – Android 12 előtt, vagy ha a dinamikus szín ki van kapcsolva. */
 private val LightColors = lightColorScheme(
@@ -68,10 +69,43 @@ private val DarkColors = darkColorScheme(
     outlineVariant = Color(0xFF3F4945),
 )
 
+/** A kiemelőszín elsődleges színei világos és sötét témához. A zöld az alapértelmezett. */
+private data class AccentPalette(
+    val lightPrimary: Color,
+    val lightOnPrimary: Color,
+    val lightContainer: Color,
+    val lightOnContainer: Color,
+    val darkPrimary: Color,
+    val darkOnPrimary: Color,
+    val darkContainer: Color,
+    val darkOnContainer: Color,
+)
+
+private fun palette(accent: AccentColor): AccentPalette? = when (accent) {
+    AccentColor.GREEN -> null
+    AccentColor.BLUE -> AccentPalette(
+        Color(0xFF2F5DA8), Color.White, Color(0xFFD7E3FF), Color(0xFF001B3E),
+        Color(0xFFABC7FF), Color(0xFF002F65), Color(0xFF11458E), Color(0xFFD7E3FF),
+    )
+    AccentColor.PURPLE -> AccentPalette(
+        Color(0xFF6750A4), Color.White, Color(0xFFEADDFF), Color(0xFF21005D),
+        Color(0xFFD0BCFF), Color(0xFF381E72), Color(0xFF4F378B), Color(0xFFEADDFF),
+    )
+    AccentColor.ORANGE -> AccentPalette(
+        Color(0xFF9A4600), Color.White, Color(0xFFFFDBC8), Color(0xFF331200),
+        Color(0xFFFFB68B), Color(0xFF532200), Color(0xFF763300), Color(0xFFFFDBC8),
+    )
+    AccentColor.RED -> AccentPalette(
+        Color(0xFFB3261E), Color.White, Color(0xFFF9DEDC), Color(0xFF410E0B),
+        Color(0xFFF2B8B5), Color(0xFF601410), Color(0xFF8C1D18), Color(0xFFF9DEDC),
+    )
+}
+
 @Composable
 fun SzabadZeneTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
+    accent: AccentColor = AccentColor.GREEN,
     content: @Composable () -> Unit,
 ) {
     val colors = when {
@@ -79,8 +113,25 @@ fun SzabadZeneTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> DarkColors
-        else -> LightColors
+        else -> {
+            val base = if (darkTheme) DarkColors else LightColors
+            val p = palette(accent)
+            when {
+                p == null -> base
+                darkTheme -> base.copy(
+                    primary = p.darkPrimary,
+                    onPrimary = p.darkOnPrimary,
+                    primaryContainer = p.darkContainer,
+                    onPrimaryContainer = p.darkOnContainer,
+                )
+                else -> base.copy(
+                    primary = p.lightPrimary,
+                    onPrimary = p.lightOnPrimary,
+                    primaryContainer = p.lightContainer,
+                    onPrimaryContainer = p.lightOnContainer,
+                )
+            }
+        }
     }
     MaterialTheme(colorScheme = colors, content = content)
 }

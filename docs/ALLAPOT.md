@@ -72,15 +72,75 @@ Minden munkamenet elején olvasd el, a végén frissítsd. A követelmények: `K
   (`AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("hu"))`).
   Az AppCompat (`autoStoreLocales`) újratelepítés utáni első indításkor egyszer szinkronizál, és felülírja
   a parancssorból beállított nyelvet – tesztelésnél ezt vedd figyelembe.
-- Állapotmentés (várólista, pozíció, módok) és `onPlaybackResumption` még nincs (2. rész).
-- A `Track` modell és a `TrackDao` bővíthető; a Room-séma exportálva van (`app/schemas/`),
-  új táblához migrációt kell írni (a `tracks` tábla gyorsítótár, de a listák adatai nem lesznek azok).
-- A számmenü közös gazdája az `AppRoot`-ban van (`LocalTrackMenu`); új menüpont a `TrackMenuHost`-ba kerül.
-- Alsó navigáció most: Zenetár, Beállítások. A Lejátszási listák és a Mappák fül a 2. részben jön.
+- (A 2. részben elkészült: állapotmentés, `onPlaybackResumption`, listák, Mappák fül, menük → `ui/Menus.kt`.)
 
 ---
 
-## 2. rész – zenetár, listák, várólista, beállítások · NINCS ELKEZDVE
+## 2. rész – zenetár, listák, várólista, beállítások · KÉSZ (2026-11-15)
+
+### Elkészült
+- **Adatbázis 2. verzió** (Room AutoMigration 1→2): `playlists`, `playlist_entries` (CASCADE a listára,
+  szándékosan nincs idegen kulcs a `tracks` gyorsítótárra), `favorites`, `queue_items`, `playback_state`.
+- **Zenetár:** fülek (Számok, Albumok, Előadók, Műfajok), gyűjtemény-részletező „Lejátszás”/„Keverés”
+  gombbal; ékezet- és kisbetű-független keresés címre, előadóra, albumra, fájlnévre (több szó: mindegyiknek
+  egyeznie kell); rendezés cím (magyar ábécé), előadó, időtartam, hozzáadás ideje szerint, csökkenő is (mentve).
+  Az albumok **név + mappa** szerint csoportosulnak (a MediaStore album-azonosítója az elrontott ID3-kódolás
+  miatt ugyanarra az albumra is eltérhet).
+- **Listák fül:** Kedvencek felül, saját listák; létrehozás, átnevezés, törlés (megerősítéssel),
+  számok / albumok / mappák hozzáadása, eltávolítás a listából (a fájl nem törlődik), **áthúzásos átrendezés**
+  (fogantyúval; akadálymentesen „Mozgatás fel/le” egyéni művelettel is).
+- **Mappák fül:** mappák listája, mappa elrejtése a zenetárból; visszavétel a Beállításokban; kézi újraolvasás.
+- **Várólista-képernyő** (a teljes lejátszóból): lejátszási sorrendben, koppintásra lejátszás, átrendezés
+  (keverés közben tiltva, magyarázattal), eltávolítás. A „Lejátszás következőként” keverés közben is közvetlenül
+  az aktuális szám után kerül, a „Hozzáadás a várólistához” a kevert sor végére (`QueueLogic`, `SkipAwarePlayer`).
+- **Állapotmentés:** várólista, aktuális szám, pozíció, ismétlés, keverés **és a kevert sorrend** mentése
+  (eseményekre 1 mp-es összevonással, lejátszás közben 10 mp-enként, leálláskor); induláskor visszaállítás
+  automatikus lejátszás nélkül; a közben eltűnt számok kimaradnak (az aktuális helyett a következő jön).
+  `onPlaybackResumption` + `MediaButtonReceiver`: leállított appnál a fejhallgató/BT lejátszógombja a mentett helyről folytat.
+- **Teljes lejátszó:** kedvenc kapcsoló (szív) és várólista gomb a módok sorában.
+- **Számmenü** környezettől függően: Lejátszás következőként, Hozzáadás a várólistához, Hozzáadás listához…,
+  kedvencek be/ki, Eltávolítás a várólistából / a listából, Megosztás (Android megosztó), Fájladatok.
+  Gyűjteménymenü: Lejátszás, Keverés, Következőként, Várólistához, Listához + saját pontok (mappa elrejtése, átnevezés, törlés).
+- **Beállítások:** téma (rendszer/világos/sötét), rendszerszínek (Android 12+), kiemelőszín (5 féle),
+  nyelv (Rendszer / Magyar / English – `hu` címke, AppCompat), ugrásértékek, fejhallgató: szünet leválasztáskor
+  (alapból be, ki is kapcsolható), folytatás visszacsatlakozáskor (alapból ki; 30 percen belül, csak ha a szünetet
+  a leválasztás okozta), zenetár újraolvasása, rövid fájlok elrejtése (ki/10/30/60 mp), elrejtett mappák, súgó, licencek, verzió.
+- A rendszersávok ikonjai az app témáját követik (sötét témán világos ikonok).
+
+### Tesztek – ténylegesen lefuttatva (végleges kódon, `clean` után)
+- **JVM-egységtesztek: 63/63 sikeres** – új: `LibraryLogicTest` 12 (ékezetfüggetlen keresés mindkét irányban,
+  magyar ábécé, rendezések, mappaszűrés almappákkal, minimum hossz, album-/előadó-/mappacsoportok),
+  `QueueLogicTest` 11 (visszaállítás hiányzó számokkal, kevert sorrend átszámozása, „következőként” és hozzáfűzés keverésnél).
+- **Műszeres tesztek (API 37): 23/23 sikeres** – új: `DatabaseTest` 5 (lista létrehozás, hozzáadás, átrendezés
+  mindkét irányba, eltávolítás utáni folytonos sorszámok, átnevezés, törlés kaszkáddal, kedvencek, várólista mentés–betöltés),
+  `MigrationTest` 1 (1→2 adatvesztés nélkül), `ReorderableTest` 3 (húzás, akadálymentes mozgatás, tiltott állapot).
+- `lintDebug`: 0 hiba.
+- **Kézi ellenőrzés emulátoron (API 37):** keresés („arvizturo” → Árvíztűrő; „SZABO ADAM” → Szabó Ádám számai;
+  nincs találat üzenet); albumok; lista létrehozása a menüből és 3 szám hozzáadása; húzásos átrendezés, ami
+  újraindítás után is megmarad; keverés + „Lejátszás következőként” a szóló szám után; **teljes leállítás és
+  újraindítás után ugyanaz a szám, ugyanott (5243 → 5252 ms), szünetben, ugyanazzal a kevert sorrenddel**;
+  várólista átrendezése és eltávolítás lejátszás megszakítása nélkül; kedvenc; mappa elrejtése és visszavétele;
+  10 mp-es szűrő (11 → 8 szám); sötét téma narancs színnel; angol nyelv a Beállításokból; megosztás;
+  médiagombos folytatás leállított appnál.
+- Képernyőképek: `reports/screens/p2_*.png` (nincs gitben).
+
+### Nem tesztelt / valódi készüléken ellenőrizendő
+- „Folytatás visszacsatlakozáskor”: emulátoron nem lehet valódi fejhallgató-kihúzást és -visszadugást
+  előidézni (a rendszer AUDIO_BECOMING_NOISY üzenete védett). A kód: `PlaybackService.deviceCallback`.
+
+### Ismert korlátok, megjegyzések
+- Az alsó navigációban a fül neve „Listák” (helytakarékosság); a képernyő címe „Lejátszási listák”.
+- Keverés közben a várólista nem rendezhető át (a kevert sorrend számít) – a képernyő ezt kiírja.
+- A várólistában ugyanaz a szám többször is szerepelhet; a sor kulcsa az alaplista-index + azonosító.
+- A `kotlinx-serialization` az appban 1.8.1-re van emelve (a `room-testing` miatt; lásd `app/build.gradle.kts`).
+
+### Amit a 3. rész vár / tudnivalók
+- Hangszínszabályzó: a lejátszó a `PlaybackService`-ben van (`player.audioSessionId`); a beállítás a
+  `SettingsRepository`-ba kerüljön. A teljes lejátszó módsorában (`ModeRow`) van hely egy EQ-gombnak.
+- Elalvásidőzítő: a szolgáltatásban (a lejátszó mellett), a felület `PlayerConnection`-en keresztül.
+- Fájlműveletek (címkeszerkesztés, vágás, törlés, csengőhang): a számmenübe (`ui/Menus.kt`, `MenuHost`) kerülnek;
+  törlés után a `LibraryRepository.refresh()` és a várólista/listák konzisztenciája ellenőrizendő.
+- A Room-séma jelenleg 2-es; új táblához AutoMigration és a `MigrationTest` bővítése kell.
 
 ## 3. rész – hangszínszabályzó, időzítő, widget, fájlműveletek · NINCS ELKEZDVE
 

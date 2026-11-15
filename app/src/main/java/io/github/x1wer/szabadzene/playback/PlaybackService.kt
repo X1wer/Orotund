@@ -2,7 +2,13 @@ package io.github.x1wer.szabadzene.playback
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.OptIn
@@ -13,6 +19,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.ShuffleOrder
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -22,34 +29,59 @@ import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
+import io.github.x1wer.szabadzene.AppContainer
 import io.github.x1wer.szabadzene.MainActivity
 import io.github.x1wer.szabadzene.R
 import io.github.x1wer.szabadzene.SzabadZeneApp
 import io.github.x1wer.szabadzene.data.library.Track
+import io.github.x1wer.szabadzene.data.settings.HeadsetSettings
 import io.github.x1wer.szabadzene.data.settings.SkipSettings
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * A lejátszó és a MediaSession egyetlen otthona. A felület MediaControlleren keresztül
  * kapcsolódik, így forgatás vagy képernyőváltás nem hoz létre új lejátszót.
+ *
+ * A várólistát, a pozíciót és a módokat menti; induláskor visszaállítja őket, de nem indít
+ * lejátszást (kivéve, ha a rendszer kifejezetten folytatást kér, pl. Bluetooth-lejátszógomb).
  */
 @OptIn(UnstableApi::class)
 class PlaybackService : MediaSessionService() {
 
     private var session: MediaSession? = null
     private lateinit var player: ExoPlayer
+    private lateinit var container: AppContainer
+    private lateinit var queueStore: QueueStore
     private val scope = MainScope()
     private val skipController = SkipController(clock = SystemClock::elapsedRealtime)
     private var skipSettings = SkipSettings()
+    private var headsetSettings = HeadsetSettings()
 
     /** Egymást követő lejátszási hibák száma; véd a végtelen továbbugrás ellen. */
     private var consecutiveErrors = 0
 
+    /** Mentés csak a visszaállítás után: különben az induló üres lista felülírná a mentettet. */
+    private var restoreDone = false
+    private var saveJob: Job? = null
+    private var periodicSaveJob: Job? = null
+
+    /** Fejhallgató-kihúzás vagy Bluetooth-megszakadás miatt állt-e meg (az automatikus folytatáshoz). */
+    private var pausedByDisconnect = false
+    private var pausedByDisconnectAt = 0L
+    private var audioManager: AudioManager? = null
+
     override fun onCreate() {
         super.onCreate()
-        val container = (application as SzabadZeneApp).container
+        container = (application as SzabadZeneApp).container
+        queueStore = QueueStore(container.database.queueDao())
 
         player = ExoPlayer.Builder(this)
             .setAudioAttributes(
@@ -59,7 +91,7 @@ class PlaybackService : MediaSessionService() {
                     .build(),
                 /* handleAudioFocus = */ true,
             )
-            // Fejhallgató kihúzásakor vagy Bluetooth-kimenet megszakadásakor szünet.
+            // Fejhallgató kihúzásakor vagy Bluetooth-kimenet megszakadásakor szünet (beállítható).
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
@@ -69,6 +101,7 @@ class PlaybackService : MediaSessionService() {
             player = player,
             onSkip = { direction -> performSkip(direction, stepMs = null) },
             stepMs = { direction -> stepFor(direction) },
+            onItemsInserted = ::onItemsInserted,
         )
 
         session = MediaSession.Builder(this, sessionPlayer)
@@ -83,11 +116,22 @@ class PlaybackService : MediaSessionService() {
                 session?.setMediaButtonPreferences(mediaButtons())
             }
         }
+        scope.launch {
+            container.settings.headset.collect { settings ->
+                headsetSettings = settings
+                player.setHandleAudioBecomingNoisy(settings.pauseOnDisconnect)
+            }
+        }
+        audioManager = getSystemService(AudioManager::class.java)?.also {
+            it.registerAudioDeviceCallback(deviceCallback, Handler(Looper.getMainLooper()))
+        }
+        scope.launch { restoreQueue() }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        saveInBackground()
         // Ha a felhasználó bezárja az appot, és nem szól zene, a szolgáltatás is álljon le.
         val current = session?.player
         if (current == null || !current.playWhenReady || current.mediaItemCount == 0 ||
@@ -98,6 +142,8 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        saveInBackground()
+        audioManager?.unregisterAudioDeviceCallback(deviceCallback)
         scope.cancel()
         session?.run {
             player.release()
@@ -106,6 +152,8 @@ class PlaybackService : MediaSessionService() {
         session = null
         super.onDestroy()
     }
+
+    // --- Ugrás ---
 
     private fun stepFor(direction: SkipDirection): Long = when (direction) {
         SkipDirection.BACK -> skipSettings.backMs
@@ -116,6 +164,128 @@ class PlaybackService : MediaSessionService() {
         val step = stepMs?.takeIf { it > 0 } ?: stepFor(direction)
         skipController.skip(PlayerSkipTarget(player), direction, step)
     }
+
+    // --- Kevert sorrend ---
+
+    /** Az aktuális kevert sorrend az alaplista indexeivel. */
+    private fun currentShuffleSequence(): List<Int> {
+        val order = player.shuffleOrder
+        if (order.length != player.mediaItemCount) return (0 until player.mediaItemCount).toList()
+        val result = ArrayList<Int>(order.length)
+        var index = order.firstIndex
+        while (index != C.INDEX_UNSET && result.size < order.length) {
+            result += index
+            index = order.getNextIndex(index)
+        }
+        return result
+    }
+
+    private fun applyShuffleSequence(sequence: List<Int>) {
+        if (sequence.size != player.mediaItemCount) return
+        player.setShuffleOrder(ShuffleOrder.DefaultShuffleOrder(sequence.toIntArray(), SystemClock.elapsedRealtime()))
+    }
+
+    /**
+     * Keverés közben a „Lejátszás következőként” elemek tényleg a következők legyenek, a
+     * „Hozzáadás a várólistához” elemek pedig a sor végére kerüljenek.
+     */
+    private fun onItemsInserted(index: Int, count: Int, currentIndexBefore: Int) {
+        if (!player.shuffleModeEnabled || count <= 0) return
+        val inserted = (index until index + count).toList()
+        val sequence = currentShuffleSequence()
+        val newSequence = when {
+            index == currentIndexBefore + 1 -> QueueLogic.playNextOrder(sequence, player.currentMediaItemIndex, inserted)
+            index + count == player.mediaItemCount -> QueueLogic.appendOrder(sequence, inserted)
+            else -> return
+        }
+        applyShuffleSequence(newSequence)
+    }
+
+    // --- Mentés és visszaállítás ---
+
+    private fun snapshot(): SavedQueue = SavedQueue(
+        trackIds = (0 until player.mediaItemCount).mapNotNull { player.getMediaItemAt(it).mediaId.toLongOrNull() },
+        currentIndex = player.currentMediaItemIndex,
+        positionMs = player.currentPosition,
+        repeatMode = player.repeatMode,
+        shuffleEnabled = player.shuffleModeEnabled,
+        shuffleOrder = currentShuffleSequence(),
+    )
+
+    private fun scheduleSave() {
+        if (!restoreDone) return
+        saveJob?.cancel()
+        saveJob = scope.launch {
+            delay(SAVE_DEBOUNCE_MS)
+            val queue = snapshot()
+            withContext(Dispatchers.IO) { runCatching { queueStore.save(queue) } }
+        }
+    }
+
+    /** Leálláskor: a pillanatkép most készül, az írás az alkalmazás hatókörében fut le. */
+    private fun saveInBackground() {
+        if (!restoreDone || session == null) return
+        saveJob?.cancel()
+        val queue = snapshot()
+        container.appScope.launch(Dispatchers.IO) { runCatching { queueStore.save(queue) } }
+    }
+
+    /** A mentett várólista a még elérhető számokkal, és a mentett módok. */
+    private suspend fun loadRestorable(): Pair<RestoredQueue<Track>, SavedQueue>? {
+        val saved = withContext(Dispatchers.IO) { queueStore.load() } ?: return null
+        val available = container.library.tracksByIds(saved.trackIds)
+        val restored = QueueLogic.restore(saved, available) ?: return null
+        return restored to saved
+    }
+
+    private suspend fun restoreQueue() {
+        try {
+            if (player.mediaItemCount > 0) return
+            val (restored, saved) = loadRestorable() ?: return
+            // Ha közben a felhasználó már elindított valamit, az élvez elsőbbséget.
+            if (player.mediaItemCount > 0) return
+            player.setMediaItems(restored.items.map { it.toMediaItem() }, restored.startIndex, restored.startPositionMs)
+            restored.shuffleOrder?.let { applyShuffleSequence(it) }
+            player.repeatMode = saved.repeatMode
+            player.shuffleModeEnabled = saved.shuffleEnabled
+            // Előkészítés lejátszás nélkül: a felület látja a számot és a hosszát, de nem szól.
+            player.playWhenReady = false
+            player.prepare()
+        } catch (e: Exception) {
+            Log.w(TAG, "A várólista visszaállítása nem sikerült", e)
+        } finally {
+            restoreDone = true
+        }
+    }
+
+    // --- Fejhallgató és Bluetooth ---
+
+    private val deviceCallback = object : AudioDeviceCallback() {
+        override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
+            if (!pausedByDisconnect || !headsetSettings.resumeOnReconnect) return
+            if (SystemClock.elapsedRealtime() - pausedByDisconnectAt > RESUME_WINDOW_MS) {
+                pausedByDisconnect = false
+                return
+            }
+            if (addedDevices.any { it.isSink && it.type in headsetTypes() }) {
+                pausedByDisconnect = false
+                player.play()
+            }
+        }
+    }
+
+    private fun headsetTypes(): Set<Int> = buildSet {
+        add(AudioDeviceInfo.TYPE_WIRED_HEADSET)
+        add(AudioDeviceInfo.TYPE_WIRED_HEADPHONES)
+        add(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP)
+        add(AudioDeviceInfo.TYPE_USB_HEADSET)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            add(AudioDeviceInfo.TYPE_BLE_HEADSET)
+            add(AudioDeviceInfo.TYPE_BLE_SPEAKER)
+        }
+    }
+
+    // --- Munkamenet ---
 
     private fun sessionActivity(): PendingIntent {
         val intent = Intent(this, MainActivity::class.java)
@@ -169,6 +339,20 @@ class PlaybackService : MediaSessionService() {
     }
 
     private inner class PlayerEvents : Player.Listener {
+        override fun onEvents(player: Player, events: Player.Events) {
+            if (events.containsAny(
+                    Player.EVENT_TIMELINE_CHANGED,
+                    Player.EVENT_MEDIA_ITEM_TRANSITION,
+                    Player.EVENT_POSITION_DISCONTINUITY,
+                    Player.EVENT_REPEAT_MODE_CHANGED,
+                    Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                    Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                )
+            ) {
+                scheduleSave()
+            }
+        }
+
         override fun onPositionDiscontinuity(
             oldPosition: Player.PositionInfo,
             newPosition: Player.PositionInfo,
@@ -185,8 +369,26 @@ class PlaybackService : MediaSessionService() {
             skipController.reset()
         }
 
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            pausedByDisconnect = !playWhenReady &&
+                reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY
+            if (pausedByDisconnect) pausedByDisconnectAt = SystemClock.elapsedRealtime()
+        }
+
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) consecutiveErrors = 0
+            // Lejátszás közben időnként a pozíciót is mentjük (váratlan leállás esetére).
+            periodicSaveJob?.cancel()
+            periodicSaveJob = if (isPlaying) {
+                scope.launch {
+                    while (isActive) {
+                        delay(PERIODIC_SAVE_MS)
+                        scheduleSave()
+                    }
+                }
+            } else {
+                null
+            }
         }
 
         override fun onPlayerError(error: PlaybackException) {
@@ -251,6 +453,30 @@ class PlaybackService : MediaSessionService() {
             val resolved = mediaItems.mapNotNull { item -> resolve(item) }.toMutableList()
             return Futures.immediateFuture(resolved)
         }
+
+        /** A rendszer (pl. Bluetooth-lejátszógomb, értesítés újraindítás után) folytatást kér. */
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            isForPlayback: Boolean,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val future = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+            scope.launch {
+                val restored = runCatching { loadRestorable() }.getOrNull()?.first
+                if (restored == null) {
+                    future.setException(UnsupportedOperationException("Nincs mentett várólista"))
+                } else {
+                    future.set(
+                        MediaSession.MediaItemsWithStartPosition(
+                            restored.items.map { it.toMediaItem() },
+                            restored.startIndex,
+                            restored.startPositionMs,
+                        ),
+                    )
+                }
+            }
+            return future
+        }
     }
 
     /** A vezérlőtől érkező elemhez visszaállítja a lejátszható URI-t. */
@@ -264,5 +490,10 @@ class PlaybackService : MediaSessionService() {
 
     private companion object {
         const val TAG = "PlaybackService"
+        const val SAVE_DEBOUNCE_MS = 1_000L
+        const val PERIODIC_SAVE_MS = 10_000L
+
+        /** Visszacsatlakozáskor csak ennyin belül folytatja automatikusan (30 perc). */
+        const val RESUME_WINDOW_MS = 30 * 60 * 1000L
     }
 }

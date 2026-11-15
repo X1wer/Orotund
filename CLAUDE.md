@@ -36,27 +36,35 @@ export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
   `testdata/generated/` (nincs gitben), feltöltés: `adb push ... /sdcard/Music/SzabadZeneTeszt/`,
   majd `adb shell content call --uri content://media --method scan_volume --arg external_primary`.
 - Emulátorok: `Clean_API_37` (fő teszteszköz), `Medium_Phone_API_28` (régi Android).
+- Az app nyelve parancssorból: `adb shell cmd locale set-app-locales <csomag> --user 0 --locales hu`
+  (nem `hu-HU`); újratelepítés utáni első indítás után add ki, különben az AppCompat felülírja.
 
 ## Architektúra
 
 ```
 io.github.x1wer.szabadzene
 ├── SzabadZeneApp / AppContainer   – kézi függőségkezelés, egy példányos összetevők
-├── MainActivity                    – Compose-gazda; onStart/onStop köti a MediaControllert
+├── MainActivity                    – Compose-gazda, téma a beállításokból; onStart/onStop köti a MediaControllert
 ├── data/
-│   ├── db/        Room (AppDatabase, TrackEntity, TrackDao) – a zenetár gyorsítótára
-│   ├── library/   MediaStoreScanner, LibraryRepository, Track, Id3TextReader
-│   └── settings/  SettingsRepository (DataStore), SkipSettings
+│   ├── db/          Room v2: tracks (gyorsítótár), playlists, playlist_entries, favorites,
+│   │                queue_items, playback_state; DAO-k: TrackDao, PlaylistDao, FavoriteDao, QueueDao
+│   ├── library/     MediaStoreScanner, LibraryRepository (szűrt + teljes folyam), Track,
+│   │                Id3TextReader, LibraryLogic (keresés, rendezés, csoportosítás, szűrés – tiszta Kotlin)
+│   ├── playlists/   PlaylistRepository (listák, kedvencek)
+│   └── settings/    SettingsRepository (DataStore): ugrás, megjelenés, fejhallgató, szűrés, rendezés
 ├── playback/
-│   ├── PlaybackService   – MediaSessionService: az EGYETLEN ExoPlayer + MediaSession
+│   ├── PlaybackService   – MediaSessionService: az EGYETLEN ExoPlayer + MediaSession; várólista-mentés
+│   │                       és -visszaállítás, onPlaybackResumption, fejhallgató-figyelés
 │   ├── SkipController    – az EGYETLEN közös ugrási logika (tiszta Kotlin, unit-tesztelt)
-│   ├── SkipAwarePlayer   – ForwardingPlayer: a rendszer/fejhallgató előre-vissza is ide fut
-│   ├── PlayerConnection  – a felület MediaController-kapcsolata, PlaybackUiState-folyam
+│   ├── SkipAwarePlayer   – ForwardingPlayer: rendszer/fejhallgató előre-vissza + beszúrások figyelése
+│   ├── QueueLogic        – visszaállítás és kevert sorrend (tiszta Kotlin, unit-tesztelt); QueueStore
+│   ├── PlayerConnection  – a felület MediaController-kapcsolata, PlaybackUiState és várólista-folyam
 │   └── PlaybackCommands  – saját munkamenet-parancsok (ugrás) és események (hiba)
 └── ui/
-    ├── AppRoot           – navigáció (fő képernyő + teljes lejátszó), számmenü-gazda
-    ├── components/       – TrackRow, TrackActionsSheet, SkipButton, Artwork, FileInfoDialog
-    ├── library/ player/ settings/ theme/
+    ├── AppRoot           – navigáció: fő képernyő 4 füllel (saját ágakkal), teljes lejátszó, várólista
+    ├── Menus             – közös szám- és gyűjteménymenü (MenuState, MenuHost), megosztás, listához adás
+    ├── components/       – TrackRow, CollectionRow, ReorderableColumn, Dialogs, SkipButton, Artwork, ...
+    ├── library/ playlists/ folders/ queue/ player/ settings/ theme/
 ```
 
 - Az ugrás útja: gomb → `PlayerConnection.skip()` → saját munkamenet-parancs →

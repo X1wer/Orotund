@@ -1,11 +1,19 @@
 package io.github.x1wer.szabadzene
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.x1wer.szabadzene.data.settings.AppearanceSettings
+import io.github.x1wer.szabadzene.data.settings.ThemeMode
 import io.github.x1wer.szabadzene.ui.AppRoot
 import io.github.x1wer.szabadzene.ui.LocalAppContainer
 import io.github.x1wer.szabadzene.ui.theme.SzabadZeneTheme
@@ -24,8 +32,24 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) handleIntent(intent)
         setContent {
+            val appearance by container.settings.appearance.collectAsStateWithLifecycle(AppearanceSettings())
+            val dark = when (appearance.themeMode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+            // A rendszersávok ikonjai az app témáját kövessék, ne csak a rendszerét.
+            DisposableEffect(dark) {
+                val style = if (dark) {
+                    SystemBarStyle.dark(Color.TRANSPARENT)
+                } else {
+                    SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+                }
+                enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+                onDispose { }
+            }
             CompositionLocalProvider(LocalAppContainer provides container) {
-                SzabadZeneTheme {
+                SzabadZeneTheme(darkTheme = dark, dynamicColor = appearance.dynamicColor, accent = appearance.accent) {
                     AppRoot(openPlayerRequests = openPlayerRequests)
                 }
             }

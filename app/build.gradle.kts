@@ -51,6 +51,11 @@ android {
         unitTests.isReturnDefaultValues = true
     }
 
+    // A migrációs teszt a kiexportált Room-sémákat olvassa.
+    sourceSets {
+        getByName("androidTest").assets.directories.add("$projectDir/schemas")
+    }
+
     lint {
         abortOnError = true
         checkReleaseBuilds = true
@@ -62,6 +67,12 @@ room {
 }
 
 dependencies {
+    constraints {
+        // A navigáció 1.7.3-at hozna; a Room migrációs tesztje (room-testing) legalább 1.8-at igényel,
+        // és a tesztek az alkalmazás futásidejű verzióit használják.
+        implementation(libs.kotlinx.serialization.core)
+        implementation(libs.kotlinx.serialization.json)
+    }
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity.compose)
@@ -93,4 +104,5 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     // A Compose tesztkönyvtár régebbi Espressót hozna, ami Android 15+ alatt nem fut.
     androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(libs.room.testing)
 }
