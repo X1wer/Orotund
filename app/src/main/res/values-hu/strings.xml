@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Magyar szövegek. -->
+<resources>
+    <!-- Navigáció -->
+    <string name="nav_library">Zenetár</string>
+    <string name="nav_settings">Beállítások</string>
+
+    <!-- Zenetár -->
+    <string name="library_title">Zenetár</string>
+    <plurals name="library_track_count">
+        <item quantity="one">%1$d szám</item>
+        <item quantity="other">%1$d szám</item>
+    </plurals>
+    <string name="library_scanning">Zenék keresése…</string>
+    <string name="library_empty_title">Nem található zene</string>
+    <string name="library_empty_body">Másolj hangfájlokat a telefon Zene (Music) mappájába – a SzabadZene automatikusan megtalálja őket.</string>
+    <string name="permission_title">Hozzáférés a zenéidhez</string>
+    <string name="permission_body">A SzabadZene a telefonon tárolt zenéidet játssza le. A számok listázásához engedély kell a hangfájlok olvasásához. Semmi nem kerül ki a készülékről.</string>
+    <string name="permission_denied_body">A hangfájlok olvasását megtagadtad. A rendszerbeállításokban, az Engedélyek között bármikor megadhatod.</string>
+    <string name="permission_grant">Engedély megadása</string>
+    <string name="permission_open_settings">Rendszerbeállítások megnyitása</string>
+    <string name="unknown_artist">Ismeretlen előadó</string>
+    <string name="unknown_album">Ismeretlen album</string>
+    <string name="unknown_track">Ismeretlen szám</string>
+
+    <!-- Számsor és műveletek -->
+    <string name="cd_track_actions">Szám műveletei: %1$s</string>
+    <string name="cd_now_playing">Most szól</string>
+    <string name="action_play_next">Lejátszás következőként</string>
+    <string name="action_add_to_queue">Hozzáadás a várólistához</string>
+    <string name="action_file_info">Fájladatok</string>
+    <string name="toast_play_next">Következőként szól: %1$s</string>
+    <string name="toast_added_to_queue">Hozzáadva a várólistához: %1$s</string>
+
+    <!-- Ugrógombok -->
+    <string name="skip_back_label">−%1$d mp</string>
+    <string name="skip_forward_label">+%1$d mp</string>
+    <string name="skip_unit">mp</string>
+    <string name="cd_skip_back">Visszaugrás %1$d másodperccel</string>
+    <string name="cd_skip_forward">Előreugrás %1$d másodperccel</string>
+    <string name="cd_unavailable">nem elérhető</string>
+
+    <!-- Lejátszó -->
+    <string name="cd_play">Lejátszás</string>
+    <string name="cd_pause">Szünet</string>
+    <string name="cd_previous">Előző szám</string>
+    <string name="cd_next">Következő szám</string>
+    <string name="cd_shuffle_on">Véletlen sorrend: be</string>
+    <string name="cd_shuffle_off">Véletlen sorrend: ki</string>
+    <string name="cd_repeat_off">Ismétlés: ki</string>
+    <string name="cd_repeat_all">Ismétlés: összes</string>
+    <string name="cd_repeat_one">Ismétlés: egy szám</string>
+    <string name="cd_minimize">Lejátszó kicsinyítése</string>
+    <string name="cd_more_actions">További műveletek</string>
+    <string name="cd_open_player">Lejátszó megnyitása</string>
+    <string name="cd_seek_bar">Lejátszási pozíció</string>
+    <string name="player_nothing_loaded">Nincs betöltött szám</string>
+    <string name="error_playback">Nem sikerült lejátszani: „%1$s”. Lehet, hogy a fájl hiányzik vagy sérült; a következő szám jön.</string>
+    <string name="error_playback_stopped">Nem sikerült lejátszani: „%1$s”. Lehet, hogy a fájl hiányzik vagy sérült; a lejátszás leállt.</string>
+
+    <!-- Beállítások -->
+    <string name="settings_title">Beállítások</string>
+    <string name="settings_section_playback">Lejátszás</string>
+    <string name="settings_skip_back">Visszaugrás mértéke</string>
+    <string name="settings_skip_forward">Előreugrás mértéke</string>
+    <string name="settings_seconds_value">%1$d másodperc</string>
+    <string name="settings_section_about">Névjegy</string>
+    <string name="settings_version">Verzió: %1$s</string>
+    <string name="dialog_cancel">Mégse</string>
+    <string name="dialog_close">Bezárás</string>
+
+    <!-- Fájladatok -->
+    <string name="file_info_title">Fájladatok</string>
+    <string name="file_info_name">Fájlnév</string>
+    <string name="file_info_location">Mappa</string>
+    <string name="file_info_artist">Előadó</string>
+    <string name="file_info_album">Album</string>
+    <string name="file_info_duration">Időtartam</string>
+    <string name="file_info_size">Méret</string>
+    <string name="file_info_format">Formátum</string>
+    <string name="file_info_bitrate">Bitráta</string>
+    <string name="file_info_sample_rate">Mintavételi frekvencia</string>
+    <string name="file_info_kbps">%1$d kbit/s</string>
+    <string name="file_info_hz">%1$d Hz</string>
+    <string name="file_info_unknown">—</string>
+</resources>

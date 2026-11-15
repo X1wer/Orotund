@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Saját ikon: két hangjegy egy hullámvonal fölött (108 × 108 dp-s adaptív ikonterület). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Hangjegyek szára és gerendája -->
+    <path
+        android:fillColor="@color/launcher_foreground"
+        android:pathData="M46,32 L72,27 L72,59 L68,59 L68,35 L50,38.5 L50,64 L46,64 Z" />
+    <!-- Hangjegyfejek -->
+    <path
+        android:fillColor="@color/launcher_foreground"
+        android:pathData="M48,64 m-7,0 a7,5.5 0,1 0,14 0 a7,5.5 0,1 0,-14 0" />
+    <path
+        android:fillColor="@color/launcher_foreground"
+        android:pathData="M70,59 m-7,0 a7,5.5 0,1 0,14 0 a7,5.5 0,1 0,-14 0" />
+    <!-- Hullám -->
+    <path
+        android:strokeColor="@color/launcher_foreground"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M34,78 Q41,72 48,78 T62,78 T76,78" />
+</vector>

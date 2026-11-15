@@ -1,0 +1,24 @@
+# Gradle / Android Studio
+.gradle/
+build/
+/app/build/
+/captures/
+.idea/
+*.iml
+.kotlin/
+.externalNativeBuild/
+.cxx/
+
+# Helyi gépfüggő fájlok
+local.properties
+
+# Aláírókulcsok soha ne kerüljenek a tárolóba
+*.jks
+*.keystore
+*.p12
+*.pass.dpapi
+
+# Generált tesztadatok és kiadási kimenetek
+/testdata/generated/
+/dist/
+/reports/

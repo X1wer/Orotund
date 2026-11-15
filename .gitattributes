@@ -1,0 +1,5 @@
+# A tárolóban minden szöveg LF sorvéggel van; a Windows-szkriptek CRLF-fel.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.jar binary
+*.png binary
