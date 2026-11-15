@@ -19,7 +19,7 @@ További funkciók:
 - világos/sötét téma, rendszerszínek vagy választható kiemelőszín, magyar és angol felület;
 - mappák elrejtése, rövid hangfájlok szűrése, megosztás, fájladatok.
 
-> Állapot: fejlesztés alatt (0.1.0). A részletek a `docs/ALLAPOT.md` fájlban.
+> Állapot: fejlesztés alatt (0.2.0). A részletek a `docs/ALLAPOT.md` fájlban.
 
 ## Telepítés
 
