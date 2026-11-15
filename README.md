@@ -17,9 +17,13 @@ További funkciók:
 - szerkeszthető várólista; a „Lejátszás következőként” keverés közben is a soron következő helyre kerül;
 - a várólista, a pozíció és a módok újraindítás után is megmaradnak (a zene magától nem indul el);
 - világos/sötét téma, rendszerszínek vagy választható kiemelőszín, magyar és angol felület;
-- mappák elrejtése, rövid hangfájlok szűrése, megosztás, fájladatok.
+- mappák elrejtése, rövid hangfájlok szűrése, megosztás, fájladatok;
+- hangszínszabályzó előbeállításokkal és egyéni sávokkal (csak a készüléken ténylegesen elérhető hatásokkal),
+  mélyhang-erősítés, elalvásidőzítő (perc vagy „a szám végén”), kezdőképernyős widget;
+- címke- és borítószerkesztés (MP3, M4A, FLAC, OGG Vorbis) ellenőrzött mentéssel; hangkivágás új fájlba
+  (`Music/SzabadZene`, az eredeti érintetlen); csengőhangként beállítás; fájltörlés a telefonról megerősítéssel.
 
-> Állapot: fejlesztés alatt (0.2.0). A részletek a `docs/ALLAPOT.md` fájlban.
+> Állapot: fejlesztés alatt (0.3.0). A részletek a `docs/ALLAPOT.md` fájlban.
 
 ## Telepítés
 

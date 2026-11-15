@@ -89,4 +89,13 @@ object QueueLogic {
 
     fun decodeOrder(text: String): List<Int> =
         if (text.isBlank()) emptyList() else text.split(',').mapNotNull { it.trim().toIntOrNull() }
+
+    /**
+     * Egy szám minden előfordulásának indexe a várólistában, csökkenő sorrendben – így
+     * egymás után eltávolíthatók anélkül, hogy a még törlendők indexe elcsúszna.
+     */
+    fun indicesToRemove(mediaIds: List<String>, trackId: Long): List<Int> {
+        val id = trackId.toString()
+        return mediaIds.indices.filter { mediaIds[it] == id }.sortedDescending()
+    }
 }

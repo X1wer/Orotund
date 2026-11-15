@@ -12,7 +12,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,10 +37,13 @@ fun TrackArtwork(
     cornerRadius: Dp = 8.dp,
 ) {
     val loader = LocalAppContainer.current?.artwork
+    // Borítószerkesztés után a verzió nő, és a kép újratöltődik.
+    val version by (loader?.version ?: remember { MutableStateFlow(0) }).collectAsState()
     val image: ImageBitmap? by produceState(
         initialValue = trackId?.let { loader?.peek(it, sizePx) },
         trackId,
         sizePx,
+        version,
     ) {
         value = if (trackId == null || loader == null) null else loader.load(trackId, sizePx)
     }

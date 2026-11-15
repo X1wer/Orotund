@@ -22,6 +22,9 @@ interface TrackDao {
     @Query("DELETE FROM tracks")
     suspend fun deleteAll()
 
+    @Query("DELETE FROM tracks WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(tracks: List<TrackEntity>)
 

@@ -142,6 +142,124 @@ Minden munkamenet elején olvasd el, a végén frissítsd. A követelmények: `K
   törlés után a `LibraryRepository.refresh()` és a várólista/listák konzisztenciája ellenőrizendő.
 - A Room-séma jelenleg 2-es; új táblához AutoMigration és a `MigrationTest` bővítése kell.
 
-## 3. rész – hangszínszabályzó, időzítő, widget, fájlműveletek · NINCS ELKEZDVE
+## 3. rész – hangszínszabályzó, időzítő, widget, fájlműveletek · KÉSZ (2026-11-15)
+
+### Elkészült
+- **Hangszínszabályzó** (`playback/AudioEffectsController`, `EqualizerLogic`, `ui/sound/EqualizerScreen`):
+  a lejátszó hangmunkamenetére kötött `Equalizer` és `BassBoost`. Futásidőben ellenőrzi, mi hozható ténylegesen
+  létre (`AudioEffect.queryEffects()` + példányosítás); ami nem, az nem jelenik meg működőként (helyette magyarázat).
+  8 saját, fordítható előbeállítás (Sík, Több mély, Több magas, Ének, Rock, Pop, Dzsessz, Klasszikus) log-frekvenciás
+  görbéből a készülék sávjaira számolva + Egyéni (frekvenciához kötve tárolva, így más sávkiosztáson is értelmes).
+  DataStore-ban mentve; számváltáskor és újraindítás után is érvényes. Elérhető a teljes lejátszó módsorából és a Beállításokból.
+- **Elalvásidőzítő** (`playback/SleepTimer`, a szolgáltatásban fut): 5–120 perc vagy „az aktuális szám végén”
+  (ExoPlayer `pauseAtEndOfMediaItems`). Állapota munkamenet-extrákban jut a felülethez (`PlayerConnection.sleepTimer`);
+  a teljes lejátszó fejlécében másodpercre pontos visszaszámlálás („Szám vége” felirat a másik módban), megszakítható;
+  a Beállításokban is elérhető.
+- **Widget** (`playback/PlayerWidget`, 4×1, átméretezhető): borító, cím, előadó, előző / lejátszás-szünet / következő.
+  Az állapotot a lejátszószolgáltatás küldi minden releváns eseménynél (ugyanabból a lejátszóból, mint az app és az
+  értesítés), leálláskor szünetet mutat. A gombok a Media3 `MediaButtonReceiver`-nek küldenek médiagombot, így leállított
+  appnál a lejátszógomb a mentett várólistával folytat. A törzsre koppintva a teljes lejátszó nyílik.
+- **Címke- és borítószerkesztés** (`data/edit/TagEditor`, `TrackFileEditor`, `ui/edit/TagEditorDialog`):
+  cím, előadó, album, album előadója, műfaj, év, sorszám, borító (képválasztó, max. 1000 px JPEG) vagy borító törlése.
+  Csak MP3, M4A, FLAC és OGG Vorbis fájlnál jelenik meg. Folyamat: másolat a gyorsítótárba → írás a másolatba →
+  visszaolvasás → (engedély) → az eredeti felülírása → az eredeti visszaolvasása és összevetése → hiba esetén a mentett
+  eredeti visszaírása; csak ellenőrzött siker után jelez sikert. Utána médiatár-újraolvasás, borító-gyorsítótár ürítése,
+  és a lejátszóban a szám újratöltése (sorrend, kevert sorrend, pozíció megmarad).
+  Könyvtár: **JAudioTagger 3.0.1 (LGPL-2.1, GPL-3.0-val kompatibilis)**; Licencek képernyőn feltüntetve.
+- **Hangkivágás** (`data/edit/LosslessTrim`, `AudioTrimmer`, `ui/edit/TrimDialog`): kétvégű csúszka + ±0,5 mp
+  finomhangolás, előhallgatás saját ideiglenes lejátszóval (a fő lejátszó szünetel, a várólista nem változik), fájlnév.
+  Mindig új fájl a `Music/SzabadZene` mappába; az eredeti érintetlen. Mentés előtt a kimenet hosszát visszamérjük.
+- **Csengőhang**: magyarázó ablak → a rendszer „Rendszerbeállítások módosítása” képernyője → visszatéréskor ellenőrzés;
+  megtagadáskor érthető üzenet. Beállítás után visszaolvassuk a rendszer csengőhangját.
+- **Törlés a telefonról** (külön menüpont, „Eltávolítás a listából”-tól független): saját megerősítés (név, méret,
+  „nem vonható vissza”), majd Android 11-től a rendszer törlési kérése, Android 10-ig írási engedély. Törlés után a szám
+  kikerül a várólistából (minden előfordulása), minden listából (folytonos sorszámokkal), a kedvencek közül és a zenetárból.
+- Számmenü új pontjai: Címkék és borító szerkesztése (csak írható formátumnál), Kivágás, Beállítás csengőhangként,
+  Törlés a telefonról. Súgó és licencek kiegészítve. Minden szöveg magyarul és angolul.
+- Engedélyek: `WRITE_EXTERNAL_STORAGE` csak `maxSdkVersion=29`, `WRITE_SETTINGS` (rendszerképernyőn kérve).
+  Nincs `INTERNET`, nincs teljes fájlrendszer-hozzáférés. Adatbázis-séma változatlan (2), új tábla nem kellett.
+
+### Formátumonként (ellenőrzött állapot)
+| Formátum | Címke + borító írása | Vágás |
+|---|---|---|
+| MP3 | igen – ID3v2.4, UTF-8 (a meglévő v2.2/v2.3 címke v2.4-re alakul; a keretek megmaradnak) | veszteségmentes keretmásolás, ~26 ms-os pontosság; a Xing/Info fejléc kimarad (VBR fájlnál egyes lejátszók a hosszt becsülhetik) |
+| M4A (AAC) | igen | veszteségmentes átcsomagolás (AAC-keret ~23 ms) |
+| FLAC | igen (PICTURE blokk) | **újrakódolt M4A/AAC 192 kbit/s** (az Android-muxer FLAC-ot nem ír) |
+| OGG Vorbis | igen (METADATA_BLOCK_PICTURE) | **újrakódolt M4A/AAC 192 kbit/s** |
+| WAV (PCM) | nem kínáljuk fel (a médiatár nem olvassa vissza a WAV-címkéket) | veszteségmentes mintamásolás |
+| Opus, ALAC, egyéb | nem kínáljuk fel | AAC-újrakódolás (nem tesztelt) |
+
+### Tesztek – ténylegesen lefuttatva (végleges kódon, `clean` után)
+- **JVM-egységtesztek: 95/95 sikeres** (a korábbi 63 + 32 új): `TagEditorTest` 8 (olvasás; írás és visszaolvasás
+  MP3/címke nélküli MP3/M4A/FLAC/OGG fájlon ékezetes szöveggel és borítóval; borító törlése, mezők ürítése; az MP3
+  hangadata bájtra változatlan; eltérés felismerése; sérült fájl → hiba; formátumfelismerés; MP3: ID3v2.4 + UTF-8),
+  `LosslessTrimTest` 7 (MP3 vágás hossza ±60 ms, címke megmarad, az eredeti bájtra azonos; tartomány a fájl végén túl;
+  üres szakasz → hiba; WAV bájtpontos mintamásolás; vágási mód választása; várólista-eltávolítás indexei),
+  `SleepTimerTest` 8 (visszaszámlálás, egyszeri leállás lejáratkor, késő óra-ütés, megszakítás, újraindítás,
+  „szám végén” mód, formázás), `EqualizerLogicTest` 9 (előbeállítások pontjai, log-frekvenciás interpoláció,
+  tartományra szorítás, egyéni értékek más sávkiosztáson, egy sáv módosítása, mentési formátum és hibás érték).
+- **Műszeres tesztek (Clean_API_37): 27/27 sikeres** (a korábbi 23 + `FileOperationsTest` 4):
+  vágás mind az 5 formátumból (MP3×2, M4A, FLAC, OGG, WAV) 1–3 mp-re: a várt mód, az eredeti változatlan, a
+  `MediaMetadataRetriever` szerinti és a **teljes dekódolással mért hossz 2 000 ± 400 ms** (lejátszhatóság);
+  címkeírás 5 fájlon, visszaolvasva **az Android saját olvasójával** is (cím, előadó magyar ékezetekkel, borító),
+  és a fájl ezután is végig dekódolható; törlés-következetesség az adatbázisban (több lista, ismétlődő elemek,
+  folytonos sorszámok, kedvencek); **teljes MediaStore-folyamat**: tesztfájl feltöltése → címkementés `Success` →
+  a zenetárban az új cím → vágás FLAC-ból M4A-ba `Music/SzabadZene`-be (~2 mp) → listához és kedvencekhez adás →
+  törlés → a fájl, a lista- és kedvencbejegyzések és a zenetár-sor is eltűnt.
+- `lintDebug`: 0 hiba (14 figyelmeztetés: újabb függőségverzió, többes szám-javaslat, API 31+ widget-attribútumok).
+- A teljes sor egyben: `clean testDebugUnitTest lintDebug assembleDebug connectedDebugAndroidTest` – BUILD SUCCESSFUL.
+- Közben talált és javított hiba: az Android ID3-olvasója a Latin-1 tartományú ékezetes szöveget (Á, Ö…) UTF-16-ban
+  is elrontja → az MP3-címke ID3v2.4 + UTF-8 lett; ezt a műszeres teszt az Android olvasójával ellenőrzi.
+
+### Kézi ellenőrzés emulátoron (Clean_API_37), képernyőképekkel (`reports/screens/p3_*.png`, nincs gitben)
+Csak generált tesztfájlok másolatain (`Music/SzabadZeneTeszt3/p3 *`):
+- **Teljes lejátszó:** időzítőgomb a fejlécben, hangszínszabályzó gomb a módsorban; az ugrógombok és a 64 dp-s
+  menüterület változatlan.
+- **Hangszínszabályzó:** az emulátoron elérhető (5 sáv: 60 Hz–14 kHz, ±15 dB, + mélyhang-erősítés). Rock előbeállítás
+  bekapcsolva az `audio_flinger` szerint a lejátszó munkamenetén engedélyezett hatás; **számváltás után és teljes
+  leállítás + újraindítás után** (új hangmunkamenet) is engedélyezve maradt.
+- **Időzítő „szám végén”:** a szám végén (0:40/0:40) megállt, nem lépett a következőre, az időzítő kikapcsolt.
+  **Időzítő 5 perc:** „összes ismétlése” mellett is pontosan lejártakor szünetelt; a visszaszámlálás látszott (4:56…).
+- **Widget:** felvétel a kezdőképernyőre; cím, előadó, borító; **leállított appnál a lejátszógomb a mentett helyről
+  folytatott**; előző/következő/szünet működik; az app minilejátszója és a widget ugyanazt mutatta (cím + állapot).
+  (Itt derült ki és javítva lett: a Media3 `MediaButtonReceiver` Android 8 felett csak a „play” gombot fogadja.)
+- **Címkeszerkesztés MP3-on (új borítóval):** a rendszer írási kérése megjelent; **„Deny” → „Nincs engedély…”,
+  a fájl md5-je változatlan**; „Allow” → mentés; ffprobe a lehúzott fájlon: új cím/előadó/album + beágyazott JPEG,
+  hossz változatlan (35,0 mp); a MediaStore és a lista az új címet és borítót mutatta; a várólistában is frissült.
+- **Kivágás MP3-ból:** csúszkával 8,6–21,2 mp, előhallgatás a kezdőpontról; kimenet `Music/SzabadZene/p3 Cimkezendo
+  (vágott).mp3`, ffprobe: 12,64 mp, hibátlan dekódolás, címkék átkerültek; **az eredeti md5-je változatlan**.
+- **Csengőhang:** magyarázat → rendszerképernyő; visszalépés engedély nélkül → „A csengőhang nem változott…”;
+  engedélyezés után beállítva (`settings get system ringtone` = a fájl), szimulált bejövő hívásnál (`gsm call`)
+  a Telecom ezt játszotta le. Utána az emulátor eredeti csengőhangja visszaállítva.
+- **Törlés:** a vágott fájl kedvencekben, egy listában és kétszer a várólistában; megerősítés (név, méret, „nem
+  vonható vissza”), majd a rendszer törlési kérése → a fájl és a MediaStore-sor eltűnt; Kedvencek 0, lista 0,
+  várólista 17 → 15, zenetár 15. Lista-környezetben „Eltávolítás ebből a listából” és „Törlés a telefonról” külön pont.
+- **A most szóló szám címkéjének mentése:** mentés közben a lejátszás nem állt meg és nem indult újra (kb. 8 mp-cel
+  a mentés után 0:26-on járt), a lejátszó az új címet kapta, a következő számra hiba nélkül lépett. (Ez egy generált
+  tesztfájlon történt; az eredeti tesztfájl utána visszatöltve.)
+
+### Nem tesztelt / valódi készüléken ellenőrizendő
+- Android 8–10 engedélyútja (`WRITE_EXTERNAL_STORAGE`, régi tárhelymód) – csak API 37-en futott minden; a kód megvan.
+- Hangszínszabályzó nélküli készülék (a „nem támogatott” ág): az emulátoron van hatás, így ez csak kódból ellenőrzött.
+- Gyártói hanghatás-felületek (pl. Dolby, Samsung SoundAlive) együttélése a saját hangszínszabályzóval.
+- Valódi hívás csengése (csak emulátoros `gsm call`).
+- Opus/ALAC vágása (újrakódolási tartalékút), nagyon nagy (több száz MB-os) fájl címkézése/vágása – a teljes fájl
+  másolata a gyorsítótárba kerül, kevés szabad helynél a művelet hibával (adatvesztés nélkül) leáll.
+
+### Ismert korlátok, megjegyzések
+- A MediaStore másodpercre kerekített módosítási idő + méret alapján dönt az újraolvasásról: ha egy fájlt
+  ugyanabban a másodpercben, ugyanakkora méretre írunk, mint az előző beolvasás, nem olvassa újra (a valós
+  használatban ritka; a tesztben ezért vár 2 mp-et).
+- A widget előző/következő gombja csak futó lejátszónál működik; leállított appnál a lejátszógomb folytat.
+- Az elalvásidőzítő nem éli túl a folyamat leállítását (szándékosan: újraindításkor nem indul magától zene).
+- A widget neve a kezdőképernyő widgetlistájában a rendszer nyelvén jelenik meg (ezt az indító dönti el).
+- Adatbázis-séma változatlan (v2): a törlés-következetességhez nem kellett új tábla.
+
+### Amit a 4. rész vár / tudnivalók
+- Átfogó ellenőrzés: Android 8–10 (API 28 emulátor) fájlművelet-útjai, hangszínszabályzó nélküli eset.
+- Tesztfájlok: `python -I tools/generate_test_audio.py --fixtures` (gitben: `app/src/sharedTest/assets/audio/`).
+
+---
+
 
 ## 4. rész – átfogó ellenőrzés, javítás, átadás · NINCS ELKEZDVE

@@ -76,6 +76,9 @@ class LibraryRepository(
         ids.distinct().chunked(900).flatMap { dao.byIds(it) }.associate { it.id to it.toTrack() }
     }
 
+    /** A törölt fájl azonnal kikerül a gyorsítótárból (a teljes újraolvasás ezután fut). */
+    suspend fun forget(trackId: Long) = withContext(ioDispatcher) { dao.deleteById(trackId) }
+
     fun hasPermission(): Boolean = ContextCompat.checkSelfPermission(context, requiredPermission()) ==
         PackageManager.PERMISSION_GRANTED
 

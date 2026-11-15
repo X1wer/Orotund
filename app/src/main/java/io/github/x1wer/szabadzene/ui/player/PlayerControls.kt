@@ -2,12 +2,15 @@ package io.github.x1wer.szabadzene.ui.player
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Pause
@@ -61,6 +64,8 @@ data class PlayerCallbacks(
     val onToggleFavorite: (() -> Unit)? = null,
     /** Null esetén a várólista gomb nem jelenik meg. */
     val onOpenQueue: (() -> Unit)? = null,
+    /** Null esetén a hangszínszabályzó gomb nem jelenik meg. */
+    val onOpenEqualizer: (() -> Unit)? = null,
 )
 
 object PlayerTags {
@@ -72,6 +77,7 @@ object PlayerTags {
     const val REPEAT = "repeat"
     const val FAVORITE = "favorite"
     const val QUEUE = "queue"
+    const val EQUALIZER = "equalizer"
     const val SKIP_ROW = "skip_row"
 }
 
@@ -249,7 +255,11 @@ fun PlayPauseButton(
     }
 }
 
-/** Véletlen sorrend és ismétlés. */
+/**
+ * Módok sora: véletlen sorrend, kedvenc, várólista, hangszínszabályzó, ismétlés.
+ * Keskeny helyen (pl. fekvő tájolás oszlopában) két sorba törik, a gombok nem kerülnek menübe.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ModeRow(
     state: PlaybackUiState,
@@ -259,10 +269,10 @@ fun ModeRow(
 ) {
     val active = MaterialTheme.colorScheme.primary
     val inactive = LocalContentColor.current.copy(alpha = 0.7f)
-    Row(
+    FlowRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(
             onClick = callbacks.onToggleShuffle,
@@ -304,6 +314,17 @@ fun ModeRow(
                     .size(56.dp),
             ) {
                 Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = stringResource(R.string.cd_open_queue))
+            }
+        }
+        callbacks.onOpenEqualizer?.let { open ->
+            IconButton(
+                onClick = open,
+                colors = IconButtonDefaults.iconButtonColors(contentColor = inactive),
+                modifier = Modifier
+                    .testTag(PlayerTags.EQUALIZER)
+                    .size(56.dp),
+            ) {
+                Icon(Icons.Rounded.Equalizer, contentDescription = stringResource(R.string.cd_equalizer))
             }
         }
         val repeatOn = state.repeat != RepeatSetting.OFF

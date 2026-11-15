@@ -1,6 +1,17 @@
 package io.github.x1wer.szabadzene.ui.player
 
 import androidx.compose.foundation.layout.Arrangement
+import io.github.x1wer.szabadzene.ui.sound.sleepTimerSummary
+import io.github.x1wer.szabadzene.ui.sound.rememberSleepRemaining
+import io.github.x1wer.szabadzene.playback.SleepTimerState
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -49,6 +60,7 @@ object FullPlayerTags {
     const val MINIMIZE = "full_player_minimize"
     const val MORE = "full_player_more"
     const val ARTWORK = "full_player_artwork"
+    const val SLEEP_TIMER = "full_player_sleep_timer"
 }
 
 /** Ennél kisebb borítót nem mutatunk: inkább eltűnik, hogy a kezelőszervek elférjenek. */
@@ -69,7 +81,10 @@ fun FullPlayerContent(
     onMoreActions: (() -> Unit)?,
     modifier: Modifier = Modifier,
     isFavorite: Boolean = false,
+    sleepTimer: SleepTimerState = SleepTimerState.Off,
+    onOpenSleepTimer: (() -> Unit)? = null,
 ) {
+    val topBar: @Composable () -> Unit = { PlayerTopBar(onMinimize, onMoreActions, sleepTimer, onOpenSleepTimer) }
     Surface(modifier = modifier.testTag(FullPlayerTags.ROOT).fillMaxSize()) {
         BoxWithConstraints(
             Modifier
@@ -77,9 +92,9 @@ fun FullPlayerContent(
                 .windowInsetsPadding(WindowInsets.safeDrawing),
         ) {
             if (maxWidth > maxHeight) {
-                LandscapePlayer(state, skip, callbacks, onMinimize, onMoreActions, maxWidth, maxHeight, isFavorite)
+                LandscapePlayer(state, skip, callbacks, topBar, maxWidth, maxHeight, isFavorite)
             } else {
-                PortraitPlayer(state, skip, callbacks, onMinimize, onMoreActions, maxHeight, isFavorite)
+                PortraitPlayer(state, skip, callbacks, topBar, maxHeight, isFavorite)
             }
         }
     }
@@ -91,8 +106,7 @@ private fun PortraitPlayer(
     state: PlaybackUiState,
     skip: SkipSettings,
     callbacks: PlayerCallbacks,
-    onMinimize: () -> Unit,
-    onMoreActions: (() -> Unit)?,
+    topBar: @Composable () -> Unit,
     viewportHeight: Dp,
     isFavorite: Boolean,
 ) {
@@ -105,7 +119,7 @@ private fun PortraitPlayer(
     ) {
         ArtFitColumn(
             viewportHeight = viewportHeight,
-            top = { PlayerTopBar(onMinimize, onMoreActions) },
+            top = topBar,
             art = { size -> PlayerArtwork(state, size) },
             bottom = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -130,8 +144,7 @@ private fun LandscapePlayer(
     state: PlaybackUiState,
     skip: SkipSettings,
     callbacks: PlayerCallbacks,
-    onMinimize: () -> Unit,
-    onMoreActions: (() -> Unit)?,
+    topBar: @Composable () -> Unit,
     maxWidth: Dp,
     maxHeight: Dp,
     isFavorite: Boolean,
@@ -158,7 +171,7 @@ private fun LandscapePlayer(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
         ) {
-            PlayerTopBar(onMinimize, onMoreActions)
+            topBar()
             PlayerDetails(state, compact = true)
             Spacer(Modifier.height(8.dp))
             PlayerSeekBlock(state, callbacks)
@@ -233,7 +246,12 @@ private fun ArtFitColumn(
 }
 
 @Composable
-private fun PlayerTopBar(onMinimize: () -> Unit, onMoreActions: (() -> Unit)?) {
+private fun PlayerTopBar(
+    onMinimize: () -> Unit,
+    onMoreActions: (() -> Unit)?,
+    sleepTimer: SleepTimerState,
+    onOpenSleepTimer: (() -> Unit)?,
+) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -253,6 +271,9 @@ private fun PlayerTopBar(onMinimize: () -> Unit, onMoreActions: (() -> Unit)?) {
             )
         }
         Spacer(Modifier.weight(1f))
+        if (onOpenSleepTimer != null) {
+            SleepTimerButton(sleepTimer, onOpenSleepTimer)
+        }
         if (onMoreActions != null) {
             IconButton(
                 onClick = onMoreActions,
@@ -340,5 +361,41 @@ private fun PlayerButtonsBlock(
         TransportRow(state = state, callbacks = callbacks)
         Spacer(Modifier.height(4.dp))
         ModeRow(state = state, callbacks = callbacks, isFavorite = isFavorite)
+    }
+}
+
+/** Az elalvásidőzítő gombja a fejlécben; ha fut, mellette a hátralévő idő (vagy „Szám vége”). */
+@Composable
+private fun SleepTimerButton(state: SleepTimerState, onClick: () -> Unit) {
+    val remaining = rememberSleepRemaining(state)
+    val active = state != SleepTimerState.Off
+    val label = when (state) {
+        SleepTimerState.Off -> null
+        SleepTimerState.EndOfTrack -> stringResource(R.string.sleep_badge_end)
+        is SleepTimerState.Timed -> remaining
+    }
+    val description = if (active) {
+        stringResource(R.string.cd_sleep_timer_on, sleepTimerSummary(state))
+    } else {
+        stringResource(R.string.cd_sleep_timer_off)
+    }
+    val color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        Modifier
+            .heightIn(min = 56.dp)
+            .widthIn(min = 56.dp)
+            .clip(RoundedCornerShape(28.dp))
+            .clickable(role = Role.Button, onClick = onClick)
+            .testTag(FullPlayerTags.SLEEP_TIMER)
+            .semantics(mergeDescendants = true) { contentDescription = description }
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Icon(Icons.Rounded.Bedtime, contentDescription = null, tint = color)
+        if (label != null) {
+            Spacer(Modifier.size(6.dp))
+            Text(label, color = color, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        }
     }
 }

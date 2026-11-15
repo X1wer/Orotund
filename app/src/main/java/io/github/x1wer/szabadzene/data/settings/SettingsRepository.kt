@@ -68,6 +68,30 @@ data class LibrarySort(
     val descending: Boolean = false,
 )
 
+/**
+ * Hangszínszabályzó: be/ki, előbeállítás neve (lásd `EqPreset`), egyéni sávértékek
+ * (frekvencia Hz → millibel, a készülék sávjaitól függetlenül tárolva) és mélyhang-kiemelés (0–1000).
+ */
+data class EqSettings(
+    val enabled: Boolean = false,
+    val preset: String = "FLAT",
+    val customLevels: Map<Int, Int> = emptyMap(),
+    val bassBoost: Int = 0,
+) {
+    companion object {
+        fun encodeLevels(levels: Map<Int, Int>): String =
+            levels.entries.sortedBy { it.key }.joinToString(",") { "${it.key}:${it.value}" }
+
+        /** Hibás vagy régi tárolt szövegnél üres térkép (= sík). */
+        fun decodeLevels(value: String?): Map<Int, Int> = value.orEmpty().split(',').mapNotNull { pair ->
+            val parts = pair.split(':')
+            val hz = parts.getOrNull(0)?.trim()?.toIntOrNull()
+            val mb = parts.getOrNull(1)?.trim()?.toIntOrNull()
+            if (parts.size == 2 && hz != null && mb != null && hz > 0) hz to mb.coerceIn(-1500, 1500) else null
+        }.toMap()
+    }
+}
+
 class SettingsRepository(context: Context) {
     private val dataStore = context.applicationContext.settingsDataStore
 
@@ -116,6 +140,29 @@ class SettingsRepository(context: Context) {
             )
         }
         .distinctUntilChanged()
+
+    val equalizer: Flow<EqSettings> = dataStore.data
+        .map { prefs ->
+            EqSettings(
+                enabled = prefs[KEY_EQ_ENABLED] ?: false,
+                preset = prefs[KEY_EQ_PRESET] ?: "FLAT",
+                customLevels = EqSettings.decodeLevels(prefs[KEY_EQ_CUSTOM]),
+                bassBoost = (prefs[KEY_BASS_BOOST] ?: 0).coerceIn(0, 1000),
+            )
+        }
+        .distinctUntilChanged()
+
+    suspend fun setEqualizerEnabled(enabled: Boolean) = dataStore.edit { it[KEY_EQ_ENABLED] = enabled }
+
+    suspend fun setEqualizerPreset(preset: String) = dataStore.edit { it[KEY_EQ_PRESET] = preset }
+
+    /** Egyéni sávértékek mentése; egyúttal az „Egyéni” előbeállítás lesz aktív. */
+    suspend fun setEqualizerCustom(levels: Map<Int, Int>) = dataStore.edit {
+        it[KEY_EQ_CUSTOM] = EqSettings.encodeLevels(levels)
+        it[KEY_EQ_PRESET] = "CUSTOM"
+    }
+
+    suspend fun setBassBoost(strength: Int) = dataStore.edit { it[KEY_BASS_BOOST] = strength.coerceIn(0, 1000) }
 
     suspend fun setSkipBackSeconds(seconds: Int) {
         val value = SkipSettings.sanitize(seconds)
@@ -170,5 +217,9 @@ class SettingsRepository(context: Context) {
         val KEY_MIN_DURATION = intPreferencesKey("min_duration_seconds")
         val KEY_SORT_FIELD = stringPreferencesKey("sort_field")
         val KEY_SORT_DESCENDING = booleanPreferencesKey("sort_descending")
+        val KEY_EQ_ENABLED = booleanPreferencesKey("eq_enabled")
+        val KEY_EQ_PRESET = stringPreferencesKey("eq_preset")
+        val KEY_EQ_CUSTOM = stringPreferencesKey("eq_custom_levels")
+        val KEY_BASS_BOOST = intPreferencesKey("bass_boost")
     }
 }

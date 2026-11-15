@@ -78,6 +78,25 @@ interface PlaylistDao {
         updateEntries(list.mapIndexed { index, entry -> entry.copy(position = index) })
     }
 
+    @Query("SELECT DISTINCT playlist_id FROM playlist_entries WHERE track_id = :trackId")
+    suspend fun playlistsContaining(trackId: Long): List<Long>
+
+    @Query("DELETE FROM playlist_entries WHERE track_id = :trackId")
+    suspend fun deleteEntriesForTrack(trackId: Long)
+
+    /**
+     * A fájl törlése után: a szám minden előfordulása kikerül minden listából, és az érintett
+     * listák sorszámai folytonosak maradnak.
+     */
+    @Transaction
+    suspend fun removeTrackEverywhere(trackId: Long) {
+        val affected = playlistsContaining(trackId)
+        deleteEntriesForTrack(trackId)
+        for (playlistId in affected) {
+            updateEntries(entries(playlistId).mapIndexed { index, entry -> entry.copy(position = index) })
+        }
+    }
+
     /** Egy bejegyzés eltávolítása a listából (a fájlt nem érinti). */
     @Transaction
     suspend fun removeEntry(playlistId: Long, entryId: Long) {

@@ -50,8 +50,12 @@ io.github.x1wer.szabadzene
 │   │                queue_items, playback_state; DAO-k: TrackDao, PlaylistDao, FavoriteDao, QueueDao
 │   ├── library/     MediaStoreScanner, LibraryRepository (szűrt + teljes folyam), Track,
 │   │                Id3TextReader, LibraryLogic (keresés, rendezés, csoportosítás, szűrés – tiszta Kotlin)
-│   ├── playlists/   PlaylistRepository (listák, kedvencek)
-│   └── settings/    SettingsRepository (DataStore): ugrás, megjelenés, fejhallgató, szűrés, rendezés
+│   ├── edit/        TagEditor (JAudioTagger: MP3 ID3v2.4/UTF-8, M4A, FLAC, OGG Vorbis – tiszta JVM),
+│   │                LosslessTrim (MP3-keret- és WAV-mintamásolás, tiszta Kotlin), AudioTrimmer (+ M4A
+│   │                átcsomagolás, FLAC/OGG → AAC újrakódolás MediaCodec-kel), TrackFileEditor (Android-oldal:
+│   │                másolat → írás → visszaolvasás → visszaírás → ellenőrzés; vágás új fájlba; törlés; csengőhang)
+│   ├── playlists/   PlaylistRepository (listák, kedvencek; forgetTrack a fájltörlés után)
+│   └── settings/    SettingsRepository (DataStore): ugrás, megjelenés, fejhallgató, szűrés, rendezés, hangszínszabályzó
 ├── playback/
 │   ├── PlaybackService   – MediaSessionService: az EGYETLEN ExoPlayer + MediaSession; várólista-mentés
 │   │                       és -visszaállítás, onPlaybackResumption, fejhallgató-figyelés
@@ -59,11 +63,18 @@ io.github.x1wer.szabadzene
 │   ├── SkipAwarePlayer   – ForwardingPlayer: rendszer/fejhallgató előre-vissza + beszúrások figyelése
 │   ├── QueueLogic        – visszaállítás és kevert sorrend (tiszta Kotlin, unit-tesztelt); QueueStore
 │   ├── PlayerConnection  – a felület MediaController-kapcsolata, PlaybackUiState és várólista-folyam
-│   └── PlaybackCommands  – saját munkamenet-parancsok (ugrás) és események (hiba)
+│   ├── PlaybackCommands  – saját munkamenet-parancsok (ugrás, időzítő, újratöltés) és események (hiba)
+│   ├── SleepTimer        – elalvásidőzítő logikája (tiszta Kotlin); a szolgáltatás futtatja, állapota
+│   │                       munkamenet-extrákban jut a felülethez (PlayerConnection.sleepTimer)
+│   ├── EqualizerLogic / AudioEffectsController – előbeállítások (log-frekvenciás görbe), a hangmunkamenetre
+│   │                       kötött Equalizer + BassBoost; az elérhetőséget AudioEffectsRegistry teszi közzé
+│   └── PlayerWidget      – kezdőképernyős widget (RemoteViews); a szolgáltatás frissíti, a gombok médiagombok
 └── ui/
     ├── AppRoot           – navigáció: fő képernyő 4 füllel (saját ágakkal), teljes lejátszó, várólista
     ├── Menus             – közös szám- és gyűjteménymenü (MenuState, MenuHost), megosztás, listához adás
     ├── components/       – TrackRow, CollectionRow, ReorderableColumn, Dialogs, SkipButton, Artwork, ...
+    ├── edit/             – FileActionsHost (engedélyfolyamatok API-szint szerint), TagEditorDialog, TrimDialog
+    ├── sound/            – EqualizerScreen, SleepTimerDialog
     ├── library/ playlists/ folders/ queue/ player/ settings/ theme/
 ```
 
@@ -74,4 +85,13 @@ io.github.x1wer.szabadzene
   `onAddMediaItems`-ben a `requestMetadata.mediaUri`-ból vagy az azonosítóból állítja vissza.
 - A MediaStore egyes ID3-címkék kódolását elrontja (magyar ékezeteknél kínai írásjelek);
   ilyenkor a `MediaStoreScanner` az `Id3TextReader`-rel a fájlból olvassa újra a szöveget.
+- Fájlmódosítás engedélye: Android 11-től `MediaStore.createWriteRequest`/`createDeleteRequest`
+  (rendszerablak), Android 10-ig `WRITE_EXTERNAL_STORAGE` (maxSdk 29, `requestLegacyExternalStorage`).
+  Új fájl (vágás) Android 10-től engedély nélkül, `Music/SzabadZene`-be.
+- MP3-címkét mindig ID3v2.4 + UTF-8 kódolással írunk: az Android ID3-olvasója a Latin-1-et és a
+  Latin-1 tartományú UTF-16 szöveget is elrontja (Á, Ö → kínai írásjelek).
+- A MediaStore a másodpercre kerekített módosítási idő + méret alapján dönti el, kell-e újraolvasni:
+  azonos másodpercben, azonos méretre írt fájlt nem olvas újra (tesztben várni kell).
+- Tesztfájlok a JVM- és műszeres tesztekhez: `app/src/sharedTest/assets/audio/`
+  (`python -I tools/generate_test_audio.py --fixtures`).
 - Kiadási aláírás még nincs. Ha kell: saját, új kulccsal (más app kulcsát ne használd).

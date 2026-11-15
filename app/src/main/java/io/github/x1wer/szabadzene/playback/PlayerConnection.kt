@@ -84,6 +84,11 @@ class PlayerConnection(
     /** A várólista lejátszási sorrendben (keverésnél a kevert sorrendben). */
     val queue: StateFlow<List<QueueEntry>> = _queue.asStateFlow()
 
+    private val _sleepTimer = MutableStateFlow<SleepTimerState>(SleepTimerState.Off)
+
+    /** Az elalvásidőzítő állapota (a szolgáltatás munkamenet-extráiból). */
+    val sleepTimer: StateFlow<SleepTimerState> = _sleepTimer.asStateFlow()
+
     private val _events = MutableSharedFlow<PlaybackEvent>(extraBufferCapacity = 8)
     val events: SharedFlow<PlaybackEvent> = _events.asSharedFlow()
 
@@ -126,6 +131,10 @@ class PlayerConnection(
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
 
+        override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
+            _sleepTimer.value = sleepTimerStateFrom(extras)
+        }
+
         override fun onDisconnected(controller: MediaController) {
             if (this@PlayerConnection.controller === controller) {
                 this@PlayerConnection.controller = null
@@ -152,6 +161,7 @@ class PlayerConnection(
                 }
                 controller = connected
                 connected.addListener(playerListener)
+                _sleepTimer.value = sleepTimerStateFrom(connected.sessionExtras)
                 publish()
                 publishQueue()
                 while (pendingActions.isNotEmpty()) pendingActions.removeFirst().invoke(connected)
@@ -260,6 +270,8 @@ class PlayerConnection(
         if (index in 0 until c.mediaItemCount) c.removeMediaItem(index)
     }
 
+    fun pause() = withController { c -> c.pause() }
+
     fun togglePlayPause() = withController { c -> Util.handlePlayPauseButtonAction(c) }
 
     fun next() = withController { c -> c.seekToNext() }
@@ -289,6 +301,35 @@ class PlayerConnection(
         }
         val args = Bundle().apply { putLong(PlaybackCommands.EXTRA_STEP_MS, stepSeconds * 1000L) }
         c.sendCustomCommand(command, args)
+    }
+
+    /** Elalvásidőzítő: leállás [minutes] perc múlva. */
+    fun startSleepTimer(minutes: Int) = withController { c ->
+        val args = Bundle().apply { putLong(PlaybackCommands.EXTRA_DURATION_MS, minutes * 60_000L) }
+        c.sendCustomCommand(PlaybackCommands.sleepTimerSet, args)
+    }
+
+    /** Elalvásidőzítő: leállás az aktuális szám végén. */
+    fun startSleepTimerEndOfTrack() = withController { c ->
+        val args = Bundle().apply { putBoolean(PlaybackCommands.EXTRA_END_OF_TRACK, true) }
+        c.sendCustomCommand(PlaybackCommands.sleepTimerSet, args)
+    }
+
+    fun cancelSleepTimer() = withController { c -> c.sendCustomCommand(PlaybackCommands.sleepTimerCancel, Bundle.EMPTY) }
+
+    /** A fájl megváltozott (címke, borító): a lejátszó töltse újra ezeket a számokat. */
+    fun reloadTracks(ids: Collection<Long>) {
+        if (ids.isEmpty()) return
+        withController { c ->
+            val args = Bundle().apply { putLongArray(PlaybackCommands.EXTRA_TRACK_IDS, ids.toLongArray()) }
+            c.sendCustomCommand(PlaybackCommands.reloadTracks, args)
+        }
+    }
+
+    /** A szám minden előfordulásának eltávolítása a várólistából (pl. a fájl törlése után). */
+    fun removeTrackEverywhere(trackId: Long) = withController { c ->
+        val ids = (0 until c.mediaItemCount).map { c.getMediaItemAt(it).mediaId }
+        QueueLogic.indicesToRemove(ids, trackId).forEach { c.removeMediaItem(it) }
     }
 
     private fun startPositionUpdates() {

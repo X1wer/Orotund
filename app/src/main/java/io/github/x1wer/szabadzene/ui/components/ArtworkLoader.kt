@@ -44,6 +44,24 @@ class ArtworkLoader(private val context: Context) {
         }
     }
 
+    /** Android-bitmap (pl. a widgethez); nem kerül a gyorsítótárba. */
+    suspend fun loadBitmap(trackId: Long, sizePx: Int): Bitmap? = withContext(dispatcher) {
+        runCatching { decode(trackId, sizePx) }.getOrNull()
+    }
+
+    /** A szám borítója megváltozott (pl. borítószerkesztés): a régi kép ne maradjon a gyorsítótárban. */
+    fun invalidate(trackId: Long) {
+        val prefix = "$trackId@"
+        cache.snapshot().keys.filter { it.startsWith(prefix) }.forEach { cache.remove(it) }
+        synchronized(missing) { missing.removeAll { it.startsWith(prefix) } }
+        _version.value++
+    }
+
+    private val _version = kotlinx.coroutines.flow.MutableStateFlow(0)
+
+    /** Borítóváltozáskor nő; a borítót megjelenítő elemek ennek alapján töltenek újra. */
+    val version: kotlinx.coroutines.flow.StateFlow<Int> = _version
+
     private fun decode(trackId: Long, sizePx: Int): Bitmap? {
         val uri = Track.contentUriFor(trackId)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

@@ -9,7 +9,11 @@ import androidx.compose.material.icons.rounded.PlaylistRemove
 import androidx.compose.material.icons.rounded.AddToQueue
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.ContentCut
+import androidx.compose.material.icons.rounded.DeleteForever
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.QueuePlayNext
 import androidx.compose.material.icons.rounded.RemoveFromQueue
@@ -35,6 +39,8 @@ import io.github.x1wer.szabadzene.ui.components.FileInfoDialog
 import io.github.x1wer.szabadzene.ui.components.NameDialog
 import io.github.x1wer.szabadzene.ui.components.TrackAction
 import io.github.x1wer.szabadzene.ui.components.TrackActionsSheet
+import io.github.x1wer.szabadzene.ui.edit.FileActionsHost
+import io.github.x1wer.szabadzene.ui.sound.SleepTimerDialog
 import kotlinx.coroutines.launch
 
 /** Honnan nyílt a számmenü: ettől függ, mely menüpontok jelennek meg. */
@@ -65,6 +71,13 @@ class MenuState {
     var infoTrack by mutableStateOf<Track?>(null)
     var addToPlaylist by mutableStateOf<List<Track>?>(null)
     var newPlaylistFor by mutableStateOf<List<Track>?>(null)
+
+    // Fájlműveletek (ui/edit/FileActionsHost) és az időzítő ablaka.
+    var editTags by mutableStateOf<Track?>(null)
+    var trim by mutableStateOf<Track?>(null)
+    var ringtone by mutableStateOf<Track?>(null)
+    var deleteFile by mutableStateOf<Track?>(null)
+    var sleepTimerOpen by mutableStateOf(false)
 
     val openTrack: Track? get() = trackRequest?.track
     val openContext: TrackMenuContext? get() = trackRequest?.context
@@ -163,6 +176,21 @@ fun MenuHost(menu: MenuState, snackbar: SnackbarHostState) {
             add(TrackAction(stringResource(R.string.action_file_info), Icons.Rounded.Info, "action_file_info") {
                 menu.infoTrack = track
             })
+            // Fájlműveletek: csak ténylegesen működő pontok (a címkeszerkesztés csak írható formátumnál).
+            if (container.fileEditor.isTagWritable(track)) {
+                add(TrackAction(stringResource(R.string.action_edit_tags), Icons.Rounded.Edit, "action_edit_tags") {
+                    menu.editTags = track
+                })
+            }
+            add(TrackAction(stringResource(R.string.action_trim), Icons.Rounded.ContentCut, "action_trim") {
+                menu.trim = track
+            })
+            add(TrackAction(stringResource(R.string.action_set_ringtone), Icons.Rounded.NotificationsActive, "action_set_ringtone") {
+                menu.ringtone = track
+            })
+            add(TrackAction(stringResource(R.string.action_delete_file), Icons.Rounded.DeleteForever, "action_delete_file") {
+                menu.deleteFile = track
+            })
         }
         TrackActionsSheet(
             title = track.title,
@@ -241,6 +269,31 @@ fun MenuHost(menu: MenuState, snackbar: SnackbarHostState) {
 
     menu.infoTrack?.let { info ->
         FileInfoDialog(track = info, onDismiss = { menu.infoTrack = null })
+    }
+
+    FileActionsHost(menu, snackbar)
+
+    if (menu.sleepTimerOpen) {
+        val timer by container.player.sleepTimer.collectAsStateWithLifecycle()
+        SleepTimerDialog(
+            state = timer,
+            onPickMinutes = { minutes ->
+                menu.sleepTimerOpen = false
+                container.player.startSleepTimer(minutes)
+                notify(resources.getString(R.string.toast_sleep_set, resources.getQuantityString(R.plurals.sleep_minutes, minutes, minutes)))
+            },
+            onPickEndOfTrack = {
+                menu.sleepTimerOpen = false
+                container.player.startSleepTimerEndOfTrack()
+                notify(resources.getString(R.string.toast_sleep_set, resources.getString(R.string.sleep_end_of_track)))
+            },
+            onCancelTimer = {
+                menu.sleepTimerOpen = false
+                container.player.cancelSleepTimer()
+                notify(resources.getString(R.string.toast_sleep_cancelled))
+            },
+            onDismiss = { menu.sleepTimerOpen = false },
+        )
     }
 }
 

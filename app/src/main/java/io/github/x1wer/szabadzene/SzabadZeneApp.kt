@@ -3,9 +3,11 @@ package io.github.x1wer.szabadzene
 import android.app.Application
 import android.content.Context
 import io.github.x1wer.szabadzene.data.db.AppDatabase
+import io.github.x1wer.szabadzene.data.edit.TrackFileEditor
 import io.github.x1wer.szabadzene.data.library.LibraryRepository
 import io.github.x1wer.szabadzene.data.playlists.PlaylistRepository
 import io.github.x1wer.szabadzene.data.settings.SettingsRepository
+import io.github.x1wer.szabadzene.playback.AudioEffectsRegistry
 import io.github.x1wer.szabadzene.playback.PlayerConnection
 import io.github.x1wer.szabadzene.ui.components.ArtworkLoader
 import kotlinx.coroutines.CoroutineScope
@@ -37,4 +39,10 @@ class AppContainer(context: Context) {
     val playlists = PlaylistRepository(database, library)
     val artwork = ArtworkLoader(context.applicationContext)
     val player = PlayerConnection(context.applicationContext, appScope)
+
+    /** A ténylegesen elérhető hanghatások (a lejátszószolgáltatás tölti ki). */
+    val audioEffects = AudioEffectsRegistry()
+
+    /** Fájlműveletek: címke és borító, vágás, törlés, csengőhang. */
+    val fileEditor = TrackFileEditor(context.applicationContext, library, playlists, artwork, player)
 }

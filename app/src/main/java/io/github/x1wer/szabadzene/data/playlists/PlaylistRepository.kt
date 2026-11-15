@@ -67,4 +67,10 @@ class PlaylistRepository(
     }
 
     suspend fun removeFavorite(trackId: Long) = favoriteDao.remove(trackId)
+
+    /** A fájl törlése után: a szám kikerül minden listából és a kedvencek közül. */
+    suspend fun forgetTrack(trackId: Long) {
+        playlistDao.removeTrackEverywhere(trackId)
+        favoriteDao.remove(trackId)
+    }
 }

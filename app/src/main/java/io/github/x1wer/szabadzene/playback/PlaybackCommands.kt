@@ -11,6 +11,12 @@ object PlaybackCommands {
     const val ACTION_SKIP_BACK = "io.github.x1wer.szabadzene.SKIP_BACK"
     const val ACTION_SKIP_FORWARD = "io.github.x1wer.szabadzene.SKIP_FORWARD"
 
+    const val ACTION_SLEEP_TIMER_SET = "io.github.x1wer.szabadzene.SLEEP_TIMER_SET"
+    const val ACTION_SLEEP_TIMER_CANCEL = "io.github.x1wer.szabadzene.SLEEP_TIMER_CANCEL"
+
+    /** Fájlmódosítás (címke, borító) után: a megadott számok újratöltése a lejátszóban. */
+    const val ACTION_RELOAD_TRACKS = "io.github.x1wer.szabadzene.RELOAD_TRACKS"
+
     /** A szolgáltatás küldi, ha egy szám nem játszható le. */
     const val EVENT_PLAYBACK_ERROR = "io.github.x1wer.szabadzene.EVENT_PLAYBACK_ERROR"
 
@@ -21,7 +27,23 @@ object PlaybackCommands {
     /** Igaz, ha a hiba után a lejátszás leállt (nem volt lejátszható következő szám). */
     const val EXTRA_STOPPED = "stopped"
 
+    /** Időzítő: időtartam ezredmásodpercben, vagy [EXTRA_END_OF_TRACK] = igaz. */
+    const val EXTRA_DURATION_MS = "duration_ms"
+    const val EXTRA_END_OF_TRACK = "end_of_track"
+    const val EXTRA_TRACK_IDS = "track_ids"
+
+    /** A munkamenet-extrák kulcsai: az időzítő állapota (a felület ebből számolja a hátralévő időt). */
+    const val SESSION_SLEEP_MODE = "sleep_mode"
+    const val SESSION_SLEEP_END_ELAPSED = "sleep_end_elapsed"
+    const val SESSION_SLEEP_DURATION = "sleep_duration"
+    const val SLEEP_MODE_OFF = 0
+    const val SLEEP_MODE_TIMED = 1
+    const val SLEEP_MODE_END_OF_TRACK = 2
+
     val skipBack = SessionCommand(ACTION_SKIP_BACK, Bundle.EMPTY)
+    val sleepTimerSet = SessionCommand(ACTION_SLEEP_TIMER_SET, Bundle.EMPTY)
+    val sleepTimerCancel = SessionCommand(ACTION_SLEEP_TIMER_CANCEL, Bundle.EMPTY)
+    val reloadTracks = SessionCommand(ACTION_RELOAD_TRACKS, Bundle.EMPTY)
     val skipForward = SessionCommand(ACTION_SKIP_FORWARD, Bundle.EMPTY)
     val playbackError = SessionCommand(EVENT_PLAYBACK_ERROR, Bundle.EMPTY)
 }
@@ -48,4 +70,26 @@ fun Track.toMediaItem(): MediaItem {
                 .build(),
         )
         .build()
+}
+
+/** Az időzítő állapota munkamenet-extrákként (a szolgáltatás → vezérlő irányban). */
+fun SleepTimerState.toBundle(): Bundle = Bundle().apply {
+    when (val state = this@toBundle) {
+        SleepTimerState.Off -> putInt(PlaybackCommands.SESSION_SLEEP_MODE, PlaybackCommands.SLEEP_MODE_OFF)
+        SleepTimerState.EndOfTrack -> putInt(PlaybackCommands.SESSION_SLEEP_MODE, PlaybackCommands.SLEEP_MODE_END_OF_TRACK)
+        is SleepTimerState.Timed -> {
+            putInt(PlaybackCommands.SESSION_SLEEP_MODE, PlaybackCommands.SLEEP_MODE_TIMED)
+            putLong(PlaybackCommands.SESSION_SLEEP_END_ELAPSED, state.endAtElapsedMs)
+            putLong(PlaybackCommands.SESSION_SLEEP_DURATION, state.durationMs)
+        }
+    }
+}
+
+fun sleepTimerStateFrom(extras: Bundle?): SleepTimerState = when (extras?.getInt(PlaybackCommands.SESSION_SLEEP_MODE)) {
+    PlaybackCommands.SLEEP_MODE_TIMED -> SleepTimerState.Timed(
+        endAtElapsedMs = extras.getLong(PlaybackCommands.SESSION_SLEEP_END_ELAPSED),
+        durationMs = extras.getLong(PlaybackCommands.SESSION_SLEEP_DURATION),
+    )
+    PlaybackCommands.SLEEP_MODE_END_OF_TRACK -> SleepTimerState.EndOfTrack
+    else -> SleepTimerState.Off
 }

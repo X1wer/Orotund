@@ -68,6 +68,7 @@ import io.github.x1wer.szabadzene.ui.queue.QueueScreen
 import io.github.x1wer.szabadzene.ui.settings.HelpScreen
 import io.github.x1wer.szabadzene.ui.settings.LicensesScreen
 import io.github.x1wer.szabadzene.ui.settings.SettingsScreen
+import io.github.x1wer.szabadzene.ui.sound.EqualizerScreen
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
@@ -77,6 +78,7 @@ val LocalAppContainer = staticCompositionLocalOf<AppContainer?> { null }
 private const val ROUTE_MAIN = "main"
 private const val ROUTE_PLAYER = "player"
 private const val ROUTE_QUEUE = "queue"
+private const val ROUTE_EQUALIZER = "equalizer"
 
 private const val GRAPH_LIBRARY = "tab_library"
 private const val GRAPH_PLAYLISTS = "tab_playlists"
@@ -135,7 +137,9 @@ fun AppRoot(openPlayerRequests: StateFlow<Int>) {
             }
         },
         onOpenQueue = { nav.navigate(ROUTE_QUEUE) { launchSingleTop = true } },
+        onOpenEqualizer = { nav.navigate(ROUTE_EQUALIZER) { launchSingleTop = true } },
     )
+    val sleepTimer by container.player.sleepTimer.collectAsStateWithLifecycle()
 
     val openRequest by openPlayerRequests.collectAsState()
     LaunchedEffect(openRequest) {
@@ -170,6 +174,7 @@ fun AppRoot(openPlayerRequests: StateFlow<Int>) {
                     callbacks = callbacks,
                     snackbar = snackbar,
                     onOpenPlayer = { nav.navigate(ROUTE_PLAYER) { launchSingleTop = true } },
+                    onOpenEqualizer = { nav.navigate(ROUTE_EQUALIZER) { launchSingleTop = true } },
                 )
             }
             composable(
@@ -189,6 +194,8 @@ fun AppRoot(openPlayerRequests: StateFlow<Int>) {
                             { menu.open(track, TrackMenuContext.NowPlaying) }
                         },
                         isFavorite = isFavorite,
+                        sleepTimer = sleepTimer,
+                        onOpenSleepTimer = { menu.sleepTimerOpen = true },
                     )
                     SnackbarHost(
                         snackbar,
@@ -197,6 +204,13 @@ fun AppRoot(openPlayerRequests: StateFlow<Int>) {
                             .navigationBarsPadding(),
                     )
                 }
+            }
+            composable(
+                ROUTE_EQUALIZER,
+                enterTransition = { slideInHorizontally { it } },
+                popExitTransition = { slideOutHorizontally { it } },
+            ) {
+                EqualizerScreen(onBack = { nav.popBackStack() })
             }
             composable(
                 ROUTE_QUEUE,
@@ -230,6 +244,7 @@ private fun MainScaffold(
     callbacks: PlayerCallbacks,
     snackbar: SnackbarHostState,
     onOpenPlayer: () -> Unit,
+    onOpenEqualizer: () -> Unit,
 ) {
     val tabNav = rememberNavController()
     val backStack by tabNav.currentBackStackEntryAsState()
@@ -313,6 +328,7 @@ private fun MainScaffold(
                         snackbar = snackbar,
                         onOpenHelp = { tabNav.navigate("settings/help") },
                         onOpenLicenses = { tabNav.navigate("settings/licenses") },
+                        onOpenEqualizer = onOpenEqualizer,
                     )
                 }
                 composable("settings/help") { HelpScreen(inner) { tabNav.popBackStack() } }

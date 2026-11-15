@@ -16,8 +16,8 @@ android {
         applicationId = "io.github.x1wer.szabadzene"
         minSdk = 26
         targetSdk = 37
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -54,6 +54,9 @@ android {
     // A migr√°ci√≥s teszt a kiexport√°lt Room-s√©m√°kat olvassa.
     sourceSets {
         getByName("androidTest").assets.directories.add("$projectDir/schemas")
+        // Kis, gener·lt tesztf·jlok (tools/generate_test_audio.py --fixtures) mindkÈt tesztkÈszletnek.
+        getByName("androidTest").assets.directories.add("$projectDir/src/sharedTest/assets")
+        getByName("test").resources.directories.add("$projectDir/src/sharedTest/assets")
     }
 
     lint {
@@ -91,6 +94,8 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
     implementation(libs.datastore.preferences)
+    // CÌmkeÌr·s (MP3, M4A, FLAC, OGG Vorbis): LGPL-2.1, GPL-3.0-val kompatibilis.
+    implementation(libs.jaudiotagger)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 

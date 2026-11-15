@@ -5,6 +5,11 @@ Kimenet: testdata/generated/ (nincs a gitben). Futtatás a projekt gyökeréből
 
     python tools/generate_test_audio.py
 
+A `--fixtures` kapcsolóval a kis (4 mp-es) automatizált-teszt-fájlok készülnek el az
+`app/src/sharedTest/assets/audio/` mappába (ezek a gitben vannak; a JVM- és a műszeres tesztek használják):
+
+    python tools/generate_test_audio.py --fixtures
+
 Ha nincs ffmpeg a PATH-on, csak a WAV-fájlok készülnek el (a Python beépített moduljával),
 a többi formátum kimarad – ezt a kimenet jelzi.
 """
@@ -80,6 +85,21 @@ def write_wav_python(path: Path, seconds: int, freq: int) -> None:
         w.writeframes(bytes(frames))
 
 
+FIXTURES_OUT = ROOT / "app" / "src" / "sharedTest" / "assets" / "audio"
+
+# A tesztek ezekre a nevekre és címkékre építenek (TagEditorTest, AudioTrimmerTest).
+FIXTURE_TAGS = {"title": "Árvíztűrő teszt", "artist": "Kovács Éva", "album": "Ékezetes dalok",
+                "genre": "Népzene", "track": "3", "date": "2024"}
+FIXTURES = [
+    ("fx_tagged.mp3", "mp3", FIXTURE_TAGS, 1),
+    ("fx_untagged.mp3", "mp3", None, None),
+    ("fx_tagged.m4a", "m4a", FIXTURE_TAGS, 3),
+    ("fx_tagged.flac", "flac", FIXTURE_TAGS, 1),
+    ("fx_tagged.ogg", "ogg", FIXTURE_TAGS, None),
+    ("fx_plain.wav", "wav", None, None),
+]
+
+
 def make_cover(ffmpeg: str, index: int) -> Path:
     path = OUT / f"_cover{index}.png"
     if not path.exists():
@@ -89,8 +109,8 @@ def make_cover(ffmpeg: str, index: int) -> Path:
 
 
 def make_track(ffmpeg: str, name: str, fmt: str, seconds: int, freq: int,
-               tags: dict | None, cover: int | None) -> None:
-    out = OUT / name
+               tags: dict | None, cover: int | None, out_dir: Path = OUT) -> None:
+    out = out_dir / name
     cmd = [ffmpeg, "-y", "-loglevel", "error",
            "-f", "lavfi", "-i", f"sine=frequency={freq}:duration={seconds}:sample_rate=44100"]
     cover_path = make_cover(ffmpeg, cover) if cover else None
@@ -121,7 +141,24 @@ def make_track(ffmpeg: str, name: str, fmt: str, seconds: int, freq: int,
     run(cmd)
 
 
+def make_fixtures() -> int:
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        print("A tesztfájlokhoz ffmpeg kell.")
+        return 1
+    OUT.mkdir(parents=True, exist_ok=True)
+    FIXTURES_OUT.mkdir(parents=True, exist_ok=True)
+    for name, fmt, tags, cover in FIXTURES:
+        make_track(ffmpeg, name, fmt, 4, 440, tags, cover, out_dir=FIXTURES_OUT)
+        print(f"kész: {name}")
+    for cover in OUT.glob("_cover*.png"):
+        cover.unlink()
+    return 0
+
+
 def main() -> int:
+    if "--fixtures" in sys.argv:
+        return make_fixtures()
     OUT.mkdir(parents=True, exist_ok=True)
     ffmpeg = shutil.which("ffmpeg")
     skipped = []

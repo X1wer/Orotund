@@ -78,6 +78,11 @@ class PlaybackService : MediaSessionService() {
     private var pausedByDisconnectAt = 0L
     private var audioManager: AudioManager? = null
 
+    private lateinit var effects: AudioEffectsController
+    private val sleepTimer = SleepTimer(clock = SystemClock::elapsedRealtime)
+    private var sleepJob: Job? = null
+    private var widgetJob: Job? = null
+
     override fun onCreate() {
         super.onCreate()
         container = (application as SzabadZeneApp).container
@@ -96,6 +101,13 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
         player.addListener(PlayerEvents())
+        isRunning = true
+        current = java.lang.ref.WeakReference(this)
+
+        // Hangszínszabályzó: a lejátszó hangmunkamenetére kötve, a beállítások szerint.
+        effects = AudioEffectsController(container.audioEffects)
+        effects.attach(player.audioSessionId)
+        scope.launch { container.settings.equalizer.collect { effects.apply(it) } }
 
         val sessionPlayer = SkipAwarePlayer(
             player = player,
@@ -126,6 +138,7 @@ class PlaybackService : MediaSessionService() {
             it.registerAudioDeviceCallback(deviceCallback, Handler(Looper.getMainLooper()))
         }
         scope.launch { restoreQueue() }
+        updateWidget()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
@@ -143,6 +156,11 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         saveInBackground()
+        isRunning = false
+        current = null
+        sleepJob?.cancel()
+        effects.release()
+        PlayerWidget.markStopped(applicationContext)
         audioManager?.unregisterAudioDeviceCallback(deviceCallback)
         scope.cancel()
         session?.run {
@@ -163,6 +181,83 @@ class PlaybackService : MediaSessionService() {
     private fun performSkip(direction: SkipDirection, stepMs: Long?) {
         val step = stepMs?.takeIf { it > 0 } ?: stepFor(direction)
         skipController.skip(PlayerSkipTarget(player), direction, step)
+    }
+
+    // --- Elalvásidőzítő ---
+
+    private fun setSleepTimer(durationMs: Long?, endOfTrack: Boolean) {
+        when {
+            endOfTrack -> sleepTimer.startEndOfTrack()
+            durationMs != null && durationMs > 0 -> sleepTimer.startTimed(durationMs)
+            else -> sleepTimer.cancel()
+        }
+        onSleepTimerChanged()
+    }
+
+    private fun onSleepTimerChanged() {
+        player.pauseAtEndOfMediaItems = sleepTimer.pauseAtEndOfItems
+        sleepJob?.cancel()
+        sleepJob = (sleepTimer.state as? SleepTimerState.Timed)?.let {
+            scope.launch {
+                while (isActive) {
+                    val remaining = sleepTimer.remainingMs() ?: break
+                    delay(remaining.coerceIn(50L, 1_000L))
+                    if (sleepTimer.onTick() == SleepTimerAction.PAUSE_NOW) {
+                        player.pause()
+                        onSleepTimerChanged()
+                        break
+                    }
+                }
+            }
+        }
+        session?.setSessionExtras(sleepTimer.state.toBundle())
+    }
+
+    // --- Fájlmódosítás után ---
+
+    /**
+     * A megadott számok újratöltése (a fájl tartalma megváltozott, pl. címkeírás után). Az elemek új
+     * gyorsítótár-kulcsot kapnak, így a lejátszó újra megnyitja a fájlt; a sorrend, a kevert
+     * sorrend, a pozíció és a lejátszás/szünet állapot változatlan marad.
+     */
+    private suspend fun reloadTracks(ids: Set<Long>) {
+        if (ids.isEmpty() || player.mediaItemCount == 0) return
+        val fresh = container.library.tracksByIds(ids)
+        val sequence = currentShuffleSequence()
+        val currentIndex = player.currentMediaItemIndex
+        val position = player.currentPosition
+        var currentReplaced = false
+        val stamp = SystemClock.elapsedRealtime()
+        for (index in 0 until player.mediaItemCount) {
+            val id = player.getMediaItemAt(index).mediaId.toLongOrNull() ?: continue
+            if (id !in ids) continue
+            val track = fresh[id] ?: continue
+            val item = track.toMediaItem().buildUpon().setCustomCacheKey("$id@$stamp").build()
+            player.replaceMediaItem(index, item)
+            if (index == currentIndex) currentReplaced = true
+        }
+        applyShuffleSequence(sequence)
+        if (currentReplaced) player.seekTo(currentIndex, position)
+        updateWidget()
+    }
+
+    // --- Widget ---
+
+    private fun updateWidget() {
+        val item = player.currentMediaItem
+        val snapshot = PlayerWidget.Snapshot(
+            trackId = item?.mediaId?.toLongOrNull(),
+            title = item?.mediaMetadata?.title?.toString(),
+            artist = item?.mediaMetadata?.artist?.toString(),
+            playing = player.playWhenReady && player.playbackState != Player.STATE_ENDED && item != null,
+        )
+        widgetJob?.cancel()
+        widgetJob = scope.launch {
+            val art = snapshot.trackId?.let { id ->
+                runCatching { container.artwork.loadBitmap(id, PlayerWidget.ART_SIZE_PX) }.getOrNull()
+            }
+            PlayerWidget.update(applicationContext, snapshot, art)
+        }
     }
 
     // --- Kevert sorrend ---
@@ -351,6 +446,27 @@ class PlaybackService : MediaSessionService() {
             ) {
                 scheduleSave()
             }
+            if (events.containsAny(
+                    Player.EVENT_MEDIA_ITEM_TRANSITION,
+                    Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                    Player.EVENT_PLAYBACK_STATE_CHANGED,
+                    Player.EVENT_TIMELINE_CHANGED,
+                    Player.EVENT_MEDIA_METADATA_CHANGED,
+                )
+            ) {
+                updateWidget()
+            }
+        }
+
+        override fun onAudioSessionIdChanged(audioSessionId: Int) {
+            effects.attach(audioSessionId)
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_ENDED && sleepTimer.state == SleepTimerState.EndOfTrack) {
+                sleepTimer.onTrackEnded()
+                onSleepTimerChanged()
+            }
         }
 
         override fun onPositionDiscontinuity(
@@ -373,6 +489,11 @@ class PlaybackService : MediaSessionService() {
             pausedByDisconnect = !playWhenReady &&
                 reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY
             if (pausedByDisconnect) pausedByDisconnectAt = SystemClock.elapsedRealtime()
+            // „Az aktuális szám végén” időzítő: a lejátszó a szám végén megállt.
+            if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
+                sleepTimer.onTrackEnded()
+                onSleepTimerChanged()
+            }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -423,10 +544,19 @@ class PlaybackService : MediaSessionService() {
             val commands = base.buildUpon()
                 .add(PlaybackCommands.skipBack)
                 .add(PlaybackCommands.skipForward)
+                .apply {
+                    // Időzítő és újratöltés csak a saját felületünknek.
+                    if (controller.packageName == packageName) {
+                        add(PlaybackCommands.sleepTimerSet)
+                        add(PlaybackCommands.sleepTimerCancel)
+                        add(PlaybackCommands.reloadTracks)
+                    }
+                }
                 .build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
                 .setAvailableSessionCommands(commands)
                 .setMediaButtonPreferences(mediaButtons())
+                .setSessionExtras(sleepTimer.state.toBundle())
                 .build()
         }
 
@@ -440,6 +570,15 @@ class PlaybackService : MediaSessionService() {
             when (customCommand.customAction) {
                 PlaybackCommands.ACTION_SKIP_BACK -> performSkip(SkipDirection.BACK, step)
                 PlaybackCommands.ACTION_SKIP_FORWARD -> performSkip(SkipDirection.FORWARD, step)
+                PlaybackCommands.ACTION_SLEEP_TIMER_SET -> setSleepTimer(
+                    durationMs = args.getLong(PlaybackCommands.EXTRA_DURATION_MS, 0L).takeIf { it > 0 },
+                    endOfTrack = args.getBoolean(PlaybackCommands.EXTRA_END_OF_TRACK, false),
+                )
+                PlaybackCommands.ACTION_SLEEP_TIMER_CANCEL -> setSleepTimer(durationMs = null, endOfTrack = false)
+                PlaybackCommands.ACTION_RELOAD_TRACKS -> {
+                    val ids = args.getLongArray(PlaybackCommands.EXTRA_TRACK_IDS)?.toSet().orEmpty()
+                    scope.launch { reloadTracks(ids) }
+                }
                 else -> return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -488,12 +627,35 @@ class PlaybackService : MediaSessionService() {
         return item.buildUpon().setUri(uri).build()
     }
 
-    private companion object {
-        const val TAG = "PlaybackService"
-        const val SAVE_DEBOUNCE_MS = 1_000L
-        const val PERIODIC_SAVE_MS = 10_000L
+    companion object {
+        /** Fut-e a szolgáltatás ebben a folyamatban (a widget ebből tudja, hogy a mentett állapot friss-e). */
+        @Volatile
+        var isRunning: Boolean = false
+            private set
+
+        private var current: java.lang.ref.WeakReference<PlaybackService>? = null
+
+        /**
+         * A widget gombja (fő szálon hívva). Igaz, ha a futó lejátszó kezelte; hamis, ha a szolgáltatás nem fut.
+         * Ugyanazt a munkamenet-lejátszót használja, mint az értesítés és a felület.
+         */
+        fun handleWidgetKey(keyCode: Int): Boolean {
+            val service = current?.get() ?: return false
+            val sessionPlayer = service.session?.player ?: return false
+            when (keyCode) {
+                android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> androidx.media3.common.util.Util.handlePlayPauseButtonAction(sessionPlayer)
+                android.view.KeyEvent.KEYCODE_MEDIA_NEXT -> sessionPlayer.seekToNext()
+                android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS -> sessionPlayer.seekToPrevious()
+                else -> return false
+            }
+            return true
+        }
+
+        private const val TAG = "PlaybackService"
+        private const val SAVE_DEBOUNCE_MS = 1_000L
+        private const val PERIODIC_SAVE_MS = 10_000L
 
         /** Visszacsatlakozáskor csak ennyin belül folytatja automatikusan (30 perc). */
-        const val RESUME_WINDOW_MS = 30 * 60 * 1000L
+        private const val RESUME_WINDOW_MS = 30 * 60 * 1000L
     }
 }

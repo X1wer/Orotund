@@ -47,11 +47,15 @@ import io.github.x1wer.szabadzene.BuildConfig
 import io.github.x1wer.szabadzene.R
 import io.github.x1wer.szabadzene.data.settings.AccentColor
 import io.github.x1wer.szabadzene.data.settings.AppearanceSettings
+import io.github.x1wer.szabadzene.data.settings.EqSettings
 import io.github.x1wer.szabadzene.data.settings.HeadsetSettings
 import io.github.x1wer.szabadzene.data.settings.LibraryFilter
 import io.github.x1wer.szabadzene.data.settings.SkipSettings
 import io.github.x1wer.szabadzene.data.settings.ThemeMode
 import io.github.x1wer.szabadzene.ui.LocalAppContainer
+import io.github.x1wer.szabadzene.ui.LocalMenuState
+import io.github.x1wer.szabadzene.ui.sound.equalizerSummary
+import io.github.x1wer.szabadzene.ui.sound.sleepTimerSummary
 import io.github.x1wer.szabadzene.ui.components.ChoiceDialog
 import kotlinx.coroutines.launch
 
@@ -81,8 +85,12 @@ fun SettingsScreen(
     snackbar: SnackbarHostState,
     onOpenHelp: () -> Unit,
     onOpenLicenses: () -> Unit,
+    onOpenEqualizer: () -> Unit = {},
 ) {
     val container = LocalAppContainer.current ?: return
+    val menu = LocalMenuState.current
+    val eq by container.settings.equalizer.collectAsStateWithLifecycle(EqSettings())
+    val sleepTimer by container.player.sleepTimer.collectAsStateWithLifecycle()
     val settings = container.settings
     val skip by settings.skipSettings.collectAsStateWithLifecycle(SkipSettings())
     val appearance by settings.appearance.collectAsStateWithLifecycle(AppearanceSettings())
@@ -141,6 +149,19 @@ fun SettingsScreen(
                 value = stringResource(R.string.settings_seconds_value, skip.forwardSeconds),
                 tag = "setting_skip_forward",
             ) { dialog = SettingsDialog.SKIP_FORWARD }
+
+            SectionHeader(stringResource(R.string.settings_section_sound))
+            ClickableSetting(
+                title = stringResource(R.string.settings_equalizer),
+                value = equalizerSummary(eq),
+                tag = "setting_equalizer",
+                onClick = onOpenEqualizer,
+            )
+            ClickableSetting(
+                title = stringResource(R.string.settings_sleep_timer),
+                value = sleepTimerSummary(sleepTimer),
+                tag = "setting_sleep_timer",
+            ) { menu.sleepTimerOpen = true }
 
             SectionHeader(stringResource(R.string.settings_section_headset))
             SwitchSetting(
@@ -400,6 +421,8 @@ fun HelpScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
         R.string.help_playlists_title to R.string.help_playlists_body,
         R.string.help_folders_title to R.string.help_folders_body,
         R.string.help_headset_title to R.string.help_headset_body,
+        R.string.help_tools_title to R.string.help_tools_body,
+        R.string.help_widget_title to R.string.help_widget_body,
     )
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
@@ -443,6 +466,7 @@ fun LicensesScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
         "AndroidX Room (Google)" to "Apache License 2.0",
         "AndroidX DataStore (Google)" to "Apache License 2.0",
         "Guava (Google)" to "Apache License 2.0",
+        "JAudioTagger (jthink.net)" to "GNU Lesser General Public License v2.1",
     )
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
