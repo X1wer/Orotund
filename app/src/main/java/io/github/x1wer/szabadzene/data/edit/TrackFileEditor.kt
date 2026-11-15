@@ -250,11 +250,18 @@ class TrackFileEditor(
 
     // --- Törlés ---
 
-    /** Android 10-ig: törlés a közös tárhely írási engedélyével. */
+    /**
+     * Android 10-ig: törlés a közös tárhely írási engedélyével. Android 9-en a `ContentResolver.delete`
+     * a MediaStore-sort törli, de a fájlt a tárhelyen hagyhatja (a következő beolvasáskor visszatérne),
+     * ezért a fájlt magunk is töröljük, és csak akkor jelezünk sikert, ha a fájl és a sor is eltűnt.
+     */
     suspend fun deleteLegacy(track: Track): Boolean = withContext(Dispatchers.IO) {
-        val deleted = runCatching { resolver.delete(track.contentUri, null, null) > 0 }.getOrDefault(false)
-        if (!deleted) track.path?.let { runCatching { File(it).delete() } }
-        !exists(track)
+        val file = track.path?.let(::File)
+        var fileGone = file == null || !file.exists()
+        if (!fileGone && file != null) fileGone = runCatching { file.delete() }.getOrDefault(false)
+        runCatching { resolver.delete(track.contentUri, null, null) }
+        if (!fileGone && file != null) fileGone = !file.exists()
+        fileGone && !exists(track)
     }
 
     /** Valóban eltűnt-e a fájl a médiatárból. */

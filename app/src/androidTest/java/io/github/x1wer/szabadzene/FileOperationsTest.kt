@@ -165,6 +165,7 @@ class FileOperationsTest {
         val values = TagValues(title = "Őszi szél – teszt", artist = "Árvai Ödön", album = "Próbalemez", genre = "Népzene", year = "2025", trackNumber = "4")
         for (name in listOf("fx_tagged.mp3", "fx_untagged.mp3", "fx_tagged.m4a", "fx_tagged.flac", "fx_tagged.ogg")) {
             val file = fixture(name)
+            val decodedBefore = decodedDurationMs(file)
             val cover = CoverChange.Replace(jpeg, "image/jpeg")
             TagEditor.write(file, values, cover)
             assertTrue("$name: saját visszaolvasás", TagEditor.verify(file, values, cover))
@@ -178,7 +179,14 @@ class FileOperationsTest {
             } finally {
                 r.release()
             }
-            assertTrue("$name: lejátszható", abs(decodedDurationMs(file) - 4_000) <= 300)
+            // A címkeírás a hangot nem változtathatja: az írás előtti és utáni dekódolt hossz azonos.
+            val decodedAfter = decodedDurationMs(file)
+            // Az API 28-as emulátor AAC-dekódere az 1 csatornás M4A-mintafájlból az írástól függetlenül
+            // csak ~3,0 mp-et ad (írás előtt is), ezért ott csak az előtte/utána összevetés a mérvadó.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                assertTrue("$name: lejátszható (írás előtt ${decodedBefore} ms, után ${decodedAfter} ms)", abs(decodedAfter - 4_000) <= 300)
+            }
+            assertTrue("$name: a hang változott (${decodedBefore} → ${decodedAfter} ms)", abs(decodedAfter - decodedBefore) <= 30)
         }
     }
 
@@ -211,25 +219,13 @@ class FileOperationsTest {
      */
     @Test
     fun endToEndSaveTrimDeleteOnMediaStore() = runBlocking {
-        assumeTrue("RELATIVE_PATH kell (Android 10+)", Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
         val container = (context.applicationContext as SzabadZeneApp).container
         val resolver = context.contentResolver
         val source = fixture("fx_tagged.flac")
-        val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        val uri = resolver.insert(
-            collection,
-            ContentValues().apply {
-                put(MediaStore.Audio.Media.DISPLAY_NAME, "szabadzene_e2e_${System.currentTimeMillis()}.flac")
-                put(MediaStore.Audio.Media.MIME_TYPE, "audio/flac")
-                put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/SzabadZeneTeszt3")
-                put(MediaStore.Audio.Media.IS_PENDING, 1)
-            },
-        )!!
+        val uri = createStoreFile(source, "szabadzene_e2e_${System.currentTimeMillis()}.flac")
         val id = ContentUris.parseId(uri)
         var trimmedUri: android.net.Uri? = null
         try {
-            resolver.openOutputStream(uri)!!.use { out -> source.inputStream().use { it.copyTo(out) } }
-            resolver.update(uri, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null)
             val track = waitForTrack(container, id) { true }
             // A médiatár másodpercre kerekített módosítási időt tárol: a beszúrás és a módosítás
             // ne essen ugyanabba a másodpercbe (valós használatban a fájl jóval régebbi).
@@ -261,9 +257,79 @@ class FileOperationsTest {
             assertFalse(id in container.playlists.favoriteIds.first())
             container.playlists.delete(playlistId)
         } finally {
-            runCatching { resolver.delete(uri, null, null) }
-            trimmedUri?.let { runCatching { resolver.delete(it, null, null) } }
+            cleanUp(uri)
+            trimmedUri?.let { cleanUp(it) }
         }
+    }
+
+    /**
+     * Regresszió (Android 9-en kiderült hiba): a „Törlés a telefonról” a MediaStore-sort törölte, de a fájl
+     * a tárhelyen maradt, és a következő beolvasáskor visszatért. A törlés után a fájlnak is el kell tűnnie.
+     */
+    @Test
+    fun deleteRemovesThePhysicalFileAndTheMediaStoreRow() = runBlocking {
+        val container = (context.applicationContext as SzabadZeneApp).container
+        val resolver = context.contentResolver
+        val source = fixture("fx_tagged.flac")
+        val uri = createStoreFile(source, "szabadzene_del_${System.currentTimeMillis()}.flac")
+        val id = ContentUris.parseId(uri)
+        try {
+            val track = waitForTrack(container, id) { true }
+            val path = track.path
+            assertNotNull(path)
+            assertTrue(File(path!!).exists())
+            assertTrue(container.fileEditor.deleteLegacy(track))
+            assertFalse("a fájl a törlés után is a tárhelyen maradt: $path", File(path).exists())
+            assertTrue(container.fileEditor.isGone(track))
+        } finally {
+            cleanUp(uri)
+        }
+    }
+
+    /**
+     * A zenetárba (MediaStore) feltölt egy tesztfájlt a `Music/SzabadZeneTeszt3` mappába: Android 10-től
+     * MediaStore-beszúrással, régebbi rendszeren fájlmásolással és médiabeolvasással (régi tárhelymód).
+     */
+    private fun createStoreFile(source: File, displayName: String): android.net.Uri {
+        val resolver = context.contentResolver
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val uri = resolver.insert(
+                MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+                ContentValues().apply {
+                    put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
+                    put(MediaStore.Audio.Media.MIME_TYPE, "audio/flac")
+                    put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/SzabadZeneTeszt3")
+                    put(MediaStore.Audio.Media.IS_PENDING, 1)
+                },
+            )!!
+            resolver.openOutputStream(uri)!!.use { out -> source.inputStream().use { it.copyTo(out) } }
+            resolver.update(uri, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null)
+            return uri
+        }
+        @Suppress("DEPRECATION")
+        val music = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC)
+        val target = File(File(music, "SzabadZeneTeszt3").apply { mkdirs() }, displayName)
+        source.copyTo(target, overwrite = true)
+        var scanned: android.net.Uri? = null
+        val latch = java.util.concurrent.CountDownLatch(1)
+        android.media.MediaScannerConnection.scanFile(context, arrayOf(target.absolutePath), null) { _, u ->
+            scanned = u
+            latch.countDown()
+        }
+        latch.await(10, java.util.concurrent.TimeUnit.SECONDS)
+        return checkNotNull(scanned) { "a médiabeolvasás nem adott URI-t: ${target.absolutePath}" }
+    }
+
+    /** Tesztfájl és médiatár-sor eltávolítása (Android 9-en a sor törlése a fájlt nem mindig törli). */
+    @Suppress("DEPRECATION")
+    private fun cleanUp(uri: android.net.Uri) {
+        val path = runCatching {
+            context.contentResolver.query(uri, arrayOf(MediaStore.Audio.Media.DATA), null, null, null)?.use {
+                if (it.moveToFirst()) it.getString(0) else null
+            }
+        }.getOrNull()
+        runCatching { context.contentResolver.delete(uri, null, null) }
+        path?.let { runCatching { File(it).delete() } }
     }
 
     private suspend fun waitForTrack(container: AppContainer, id: Long, predicate: (Track) -> Boolean): Track {

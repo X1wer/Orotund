@@ -466,6 +466,8 @@ fun LicensesScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
         "AndroidX Room (Google)" to "Apache License 2.0",
         "AndroidX DataStore (Google)" to "Apache License 2.0",
         "Guava (Google)" to "Apache License 2.0",
+        "kotlinx.serialization (JetBrains), JetBrains Annotations" to "Apache License 2.0",
+        "Okio (Square), JSpecify" to "Apache License 2.0",
         "JAudioTagger (jthink.net)" to "GNU Lesser General Public License v2.1",
     )
     Column(Modifier.fillMaxSize()) {

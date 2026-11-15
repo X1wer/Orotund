@@ -16,6 +16,9 @@ import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -269,7 +272,16 @@ private fun MainScaffold(
                             selected = destination?.hierarchy?.any { it.route == tab.graph } == true,
                             onClick = { tabNav.navigateToTab(tab.graph) },
                             icon = { Icon(tab.icon, contentDescription = null) },
-                            label = { Text(stringResource(tab.label), maxLines = 1) },
+                            // Négy fül 320 dp-n 2,0× betűnél már nem fér el: a címke betűméretét 1,3×-nél
+                            // megfogjuk (az ikon és a teljes feliratú akadálymentes leírás megmarad).
+                            label = {
+                                val density = LocalDensity.current
+                                CompositionLocalProvider(
+                                    LocalDensity provides Density(density.density, density.fontScale.coerceAtMost(1.3f)),
+                                ) {
+                                    Text(stringResource(tab.label), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                            },
                             modifier = Modifier.testTag(tab.graph),
                         )
                     }

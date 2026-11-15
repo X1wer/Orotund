@@ -94,4 +94,6 @@ io.github.x1wer.szabadzene
   azonos másodpercben, azonos méretre írt fájlt nem olvas újra (tesztben várni kell).
 - Tesztfájlok a JVM- és műszeres tesztekhez: `app/src/sharedTest/assets/audio/`
   (`python -I tools/generate_test_audio.py --fixtures`).
+- API 28-on a MediaStore-törlés a fájlt nem törli: `TrackFileEditor.deleteLegacy` a fájlt magától törli (regressziós teszt: `FileOperationsTest`).
+- Átadási dokumentumok: `README.md`, `docs/TESZTOSSZEFOGLALO.md`, `docs/LICENCEK.md`. Verzió: 1.0.0.
 - Kiadási aláírás még nincs. Ha kell: saját, új kulccsal (más app kulcsát ne használd).

@@ -262,4 +262,40 @@ Csak generált tesztfájlok másolatain (`Music/SzabadZeneTeszt3/p3 *`):
 ---
 
 
-## 4. rész – átfogó ellenőrzés, javítás, átadás · NINCS ELKEZDVE
+## 4. rész – átfogó ellenőrzés, javítás, átadás · KÉSZ (2026-11-15) · 1.0.0
+
+Részletes eredmények: `TESZTOSSZEFOGLALO.md`; licencek: `LICENCEK.md`; használat/fordítás: `README.md`.
+
+### Elkészült
+- A specifikáció 7. fejezetének mind a 12 pontja végigjárva `Clean_API_37`-en (kis kijelző 320 × 568 dp, fekvő tájolás,
+  1,3× és 2,0× betű, repülőgép-mód, engedélymegtagadás, hiányzó/sérült fájl, újraindítás utáni visszaállás);
+  az összefésült manifestben nincs `INTERNET` (és `ACCESS_NETWORK_STATE` sem).
+- A 3. rész fájlműveletei (címke + borító, vágás, csengőhang, törlés) **Android 9-en** (`Medium_Phone_API_28`) is kipróbálva.
+- **Talált és javított hibák:** (1) Android 9-en a „Törlés a telefonról” csak a MediaStore-sort törölte, a fájl a tárhelyen
+  maradt → `TrackFileEditor.deleteLegacy` a fájlt is törli, siker csak ha a fájl és a sor is eltűnt; regressziós teszt:
+  `FileOperationsTest.deleteRemovesThePhysicalFileAndTheMediaStoreRow` (a javítás nélkül bukik). (2) `TagEditorDialog`:
+  rendszersáv-ikonok és a navigációs sáv alá lógó „Mentés” gomb. (3) Alsó navigáció címkéi 2,0× betűnél levágódtak
+  (a címke betűmérete 1,3×-nél korlátozva). (4) Licencek képernyő kiegészítve (Okio, kotlinx.serialization, JSpecify, JetBrains Annotations).
+- A `FileOperationsTest` teljes MediaStore-folyamata és a címkeolvasás-teszt API 28-on is fut (`createStoreFile`, `cleanUp` segédek).
+- Átadási dokumentumok: `README.md` újraírva, `docs/TESZTOSSZEFOGLALO.md`, `docs/LICENCEK.md`.
+- Verzió: 1.0.0 (versionCode 4). Teszt-APK: `dist/SzabadZene-1.0.0-debug.apk` (debug kulccsal aláírt debug build,
+  SHA-256 a `dist/SHA256SUMS.txt`-ben; a `dist/` nincs gitben). Release-aláírás nincs beállítva.
+
+### Tesztek – ténylegesen lefuttatva (végleges kódon, `clean` után)
+- JVM-egységtesztek: **95/95**. Műszeres tesztek: **28/28 `Clean_API_37`-en és 28/28 `Medium_Phone_API_28`-on**
+  (a 3. rész 27 tesztje + az új törlési regressziós teszt). `lintDebug`: 0 hiba, 14 figyelmeztetés. `assembleDebug`: sikeres.
+
+### Nyitva / valódi készüléken ellenőrizendő
+- Bluetooth, vezetékes fejhallgató kihúzása/visszadugása, valódi BT-gombok, hívás közbeni hangfókusz valódi hívásnál,
+  hangszínszabályzó nélküli készülék ága, gyártói hanghatások, nagyon nagy zenetár / nagy fájlok.
+- A widgetet a 4. részben nem néztem meg újra (a 3. részben ellenőrizve); Android 8 és 10–12 rendszeren nem futott semmi.
+- Nincs automatizált teszt a rendszersáv-színezéshez és az alsó navigáció betűméret-korlátjához (képernyőképpel ellenőrizve).
+- Ismert, nem javított apróság: ha az olvasási engedélyt az indítás előtt visszavonják, a mentett várólista számai
+  „nem sikerült lejátszani” üzenettel egymás után kihagyódnak (összeomlás nélkül); jobb lenne ilyenkor egyetlen
+  „nincs engedély” üzenet – nem mély átalakítás, de nem kritikus.
+- Nyilvános közzététel előtt: a JAudioTagger LGPL-szövegének mellékelése (lásd `LICENCEK.md`).
+
+### Tudnivalók a további munkához
+- API 28-on nincs `scan_volume`: `adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/...`.
+- `adb shell` idézőjelezés: szóközös útvonalnál `adb shell "rm '/sdcard/Music/x y.mp3'"`.
+- Műszeres tesztek eszközönként: `ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest` (a futás után az app eltávolítódik).
