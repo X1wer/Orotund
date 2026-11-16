@@ -60,6 +60,19 @@ Követelmények: [`docs/KOVETELMENYEK.md`](docs/KOVETELMENYEK.md). Fejlesztési 
 Android 8.0 (API 26) vagy újabb. A fordításhoz: Android Studio (a projekt a mellékelt JBR-rel,
 JDK 17+ fut), Android SDK 37 (compile/target), internetkapcsolat az első Gradle-szinkronhoz.
 
+## Letöltés (aláírt kiadás)
+
+A kiadások a GitHub **Releases** oldalán vannak (`Orotund-<verzió>.apk` + `SHA256SUMS.txt`). Az APK-t az
+Orotund saját kulcsa írja alá; a tanúsítvány SHA-256 ujjlenyomata:
+
+```
+a2fe58890942add4128696d354796e560ad59ffdfc4ff2742f83546ac354d2b4
+```
+
+Ellenőrzés: `apksigner verify --print-certs Orotund-<verzió>.apk`. A kiadás csomagneve
+`io.github.x1wer.szabadzene`, a teszt-APK-é `io.github.x1wer.szabadzene.debug`: a kettő külön appként
+települ, és nem látják egymás adatait.
+
 ## Telepítés (kész teszt-APK)
 
 A kész, debug kulccsal aláírt teszt-APK a `dist/` mappában van (verziószámmal, pl.

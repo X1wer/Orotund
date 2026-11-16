@@ -503,4 +503,6 @@ To only take it off a playlist, use “Remove from this playlist” instead.</st
     <string name="playlist_sort_created">Date created</string>
     <string name="playlist_sort_size">Number of songs</string>
     <string name="playlist_special_first">Special lists always first</string>
+    <string name="licenses_full_gpl">Full text of the GPL-3.0 license</string>
+    <string name="licenses_full_lgpl">Full text of the LGPL-2.1 license (JAudioTagger)</string>
 </resources>

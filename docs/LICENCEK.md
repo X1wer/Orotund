@@ -28,11 +28,12 @@ JUnit 4 (EPL-1.0), AndroidX Test, Espresso, Compose UI-teszt (Apache-2.0).
 - Dinamikusan, módosítás nélkül, a Maven Central kiadásból (`net.jthink:jaudiotagger:3.0.1`) használjuk;
   a könyvtár forrásán nem változtattunk. A teljes forráskódú SzabadZene-projekt a cserét (újrafordítás másik
   verzióval) lehetővé teszi – ez az LGPL „újralinkelhetőségi” feltételének is megfelel.
-- A Maven-POM csak „LGPL” megjelölést tartalmaz; a pontos verziószámot (2.1 vagy később) a könyvtár
-  forrásfejlécei adják. **Nyilvános közzététel előtt** érdemes a kiadáshoz a JAudioTagger licencszövegét
-  (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt) és a GPL-3.0 szöveget (`LICENSE`) is mellékelni,
-  és a közzétett forráskód mellé a „third-party” megjegyzést kitenni. Ezt a szöveget a gép nem töltötte le
-  (nincs letöltési engedély), ezért nincs a tárolóban.
+- A Maven-POM csak „LGPL” megjelölést tartalmaz; a forrásfejlécek LGPL-2.1-et adnak. Az LGPL-2.1 teljes
+  szövege a tárolóban (`docs/LGPL-2.1.txt`) és az APK-ban is megvan (`assets/licenses/LGPL-2.1.txt`, a GPL-3.0
+  szövegével együtt), és az app Licencek képernyőjén megnyitható. (Az FSF hivatalos szövege; szóra egyezik az
+  SPDX `LGPL-2.1-only` példányával.)
+- A kiadási buildben (R8) a JAudioTagger teljes egészében megmarad (`-keep class org.jaudiotagger.**`): a
+  könyvtár a kereteket név alapján, reflexióval példányosítja, és így nem is módosul.
 
 ## Nem használt dolgok
 

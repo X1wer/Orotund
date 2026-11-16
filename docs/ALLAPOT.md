@@ -540,3 +540,12 @@ A kiolvasott adatok (CSV, .m3u8) személyesek, a projekten kívül maradnak.
   app adatai megmaradjanak.
 - Tesztek: JVM 155/155 (új: `PlaylistOrderingTest` 3), műszeres 45/45 `Clean_API_37`-en, lint 0 hiba.
 - Verzió 1.5.0 (versionCode 10). GitHub: `X1wer/Orotund`.
+
+### Aláírt kiadás – 1.5.0 (2026-11-16)
+- Új, saját Orotund-kulcs (PKCS12, RSA 4096, alias `orotund`; a tanúsítvány SHA-256-ja a README-ben). A kulcstár és
+  a DPAPI-val védett jelszófájl a felhasználói profil kulcsmappájában van, a kiadási szkriptek a projekten kívül
+  (`outputs/Orotund-release`): a jelszó csak az apksigner folyamat környezetében él.
+- A kiadási build (R8) eddig nem fordult: a JAudioTagger AWT/ImageIO hivatkozásaira `-dontwarn`, a könyvtárra
+  `-keep` (reflexió). Kézzel ellenőrizve az aláírt APK `Clean_API_37`-en: indítás, zenetár, lejátszás,
+  címkeolvasás és -írás (rendszer-jóváhagyással), hiba nélkül.
+- A GPL-3.0 és az LGPL-2.1 teljes szövege az APK-ban, a Licencek képernyőről megnyitható.

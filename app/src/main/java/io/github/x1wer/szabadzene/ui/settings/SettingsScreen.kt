@@ -612,6 +612,7 @@ fun LicensesScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
         "Okio (Square), JSpecify" to "Apache License 2.0",
         "JAudioTagger (jthink.net)" to "GNU Lesser General Public License v2.1",
     )
+    var openText by remember { mutableStateOf<Pair<String, Int>?>(null) }
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text(stringResource(R.string.settings_licenses)) },
@@ -635,6 +636,34 @@ fun LicensesScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
             components.forEach { (name, license) ->
                 ListItem(headlineContent = { Text(name) }, supportingContent = { Text(license) })
             }
+            // A teljes licencszövegek az APK-ban (assets/licenses), hogy a kiadással együtt terjedjenek.
+            listOf(
+                R.string.licenses_full_gpl to "licenses/GPL-3.0.txt",
+                R.string.licenses_full_lgpl to "licenses/LGPL-2.1.txt",
+            ).forEach { (label, asset) ->
+                ListItem(
+                    headlineContent = { Text(stringResource(label)) },
+                    modifier = Modifier
+                        .testTag("license_text_${asset.substringAfter('/').substringBefore('.')}")
+                        .clickable { openText = asset to label },
+                )
+            }
         }
+    }
+    openText?.let { (asset, label) ->
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val text = remember(asset) { runCatching { context.assets.open(asset).bufferedReader().use { it.readText() } }.getOrDefault("") }
+        AlertDialog(
+            onDismissRequest = { openText = null },
+            title = { Text(stringResource(label)) },
+            text = {
+                Text(
+                    text,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
+            confirmButton = { TextButton(onClick = { openText = null }) { Text(stringResource(R.string.dialog_close)) } },
+        )
     }
 }

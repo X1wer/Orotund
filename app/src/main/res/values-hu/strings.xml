@@ -499,4 +499,6 @@ Ha csak egy listából vennéd ki, az „Eltávolítás ebből a listából” p
     <string name="playlist_sort_created">Létrehozás ideje</string>
     <string name="playlist_sort_size">Számok száma</string>
     <string name="playlist_special_first">Különleges listák mindig elöl</string>
+    <string name="licenses_full_gpl">A GPL-3.0 licenc teljes szövege</string>
+    <string name="licenses_full_lgpl">Az LGPL-2.1 licenc teljes szövege (JAudioTagger)</string>
 </resources>
