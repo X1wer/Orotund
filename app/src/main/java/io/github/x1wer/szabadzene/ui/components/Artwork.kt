@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -63,7 +62,7 @@ fun TrackArtwork(
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
-            Icon(
+            androidx.compose.material3.Icon(
                 imageVector = Icons.Rounded.MusicNote,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSecondaryContainer,

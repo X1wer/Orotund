@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Egyszínű változat a témázott ikonokhoz (Android 13+): ugyanaz a forma, a rendszer színezi. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- A teljes rajz kicsinyítve és lejjebb tolva, hogy a kerek maszk se vágja le (biztonságos 66 dp-s kör). -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.75"
+        android:scaleY="0.75"
+        android:translateY="2">
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M37,60.5 A15,15 0 0,0 37,75.5"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeLineCap="round"
+            android:strokeWidth="3.5" />
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M32,55.4 A22,22 0 0,0 32,80.6"
+            android:strokeAlpha="0.6"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeLineCap="round"
+            android:strokeWidth="3.5" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M55.5,66 L55.5,32 L59,32 L59,66 Z M41.54,71.08 A9,7 -20 1,1 58.46,64.92 A9,7 -20 1,1 41.54,71.08 Z M57,33 C60,23 71,19 80,22 C77,31 67,36.5 57,36.5 Z" />
+    </group>
+</vector>

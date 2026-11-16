@@ -14,6 +14,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Log
+import android.util.LruCache
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import io.github.x1wer.szabadzene.data.library.LibraryRepository
@@ -22,6 +23,8 @@ import io.github.x1wer.szabadzene.data.playlists.PlaylistRepository
 import io.github.x1wer.szabadzene.playback.PlayerConnection
 import io.github.x1wer.szabadzene.ui.components.ArtworkLoader
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -104,6 +107,44 @@ class TrackFileEditor(
         }
     }
 
+    // --- Dalszöveg ---
+
+    /** Beolvasott dalszövegek (üres szöveg = nincs a fájlban), hogy számváltáskor ne kelljen újra másolni. */
+    private val lyricsCache = LruCache<Long, String>(LYRICS_CACHE_SIZE)
+
+    private val _lyricsVersion = MutableStateFlow(0)
+
+    /** Dalszöveg- vagy címkemódosítás után nő: a dalszöveg-nézet ennek alapján olvas újra. */
+    val lyricsVersion: StateFlow<Int> = _lyricsVersion
+
+    /**
+     * A fájlba ágyazott dalszöveg (MP3: USLT, M4A: ©lyr, FLAC/OGG: LYRICS). Üres szöveg, ha nincs;
+     * null, ha a formátumból nem olvasható, vagy a fájl nem olvasható.
+     */
+    suspend fun readLyrics(track: Track): String? {
+        lyricsCache.get(track.id)?.let { return it }
+        if (!isTagWritable(track)) return null
+        val text = runCatching { readTags(track).values.lyrics.orEmpty() }.getOrNull() ?: return null
+        lyricsCache.put(track.id, text)
+        return text
+    }
+
+    /**
+     * Dalszöveg mentése a fájlba (üres szöveg = törlés), a címkeírás ellenőrzött folyamatával.
+     * A többi címke a fájlban lévő értékével íródik vissza. Az írási engedélyt a hívó szerzi meg.
+     */
+    suspend fun saveLyrics(track: Track, text: String): TagSaveResult {
+        val current = runCatching { readTags(track).values }.getOrElse {
+            return TagSaveResult.Failure("io", restored = true)
+        }
+        val result = saveTags(track, current.copy(lyrics = text), CoverChange.Keep)
+        if (result == TagSaveResult.Success) {
+            lyricsCache.put(track.id, TagValues.normalizeLyrics(text))
+            _lyricsVersion.value++
+        }
+        return result
+    }
+
     /** Címkék és borító mentése. Az írási engedélyt a hívó szerzi meg előtte. */
     suspend fun saveTags(track: Track, values: TagValues, cover: CoverChange): TagSaveResult = withContext(Dispatchers.IO) {
         val format = TagFormat.of(track.displayName, track.mimeType)
@@ -138,6 +179,8 @@ class TrackFileEditor(
             rescan(track)
             library.refresh().join()
             artwork.invalidate(track.id)
+            lyricsCache.remove(track.id)
+            _lyricsVersion.value++
             // A lejátszó (MediaController) csak a fő szálról kezelhető.
             withContext(Dispatchers.Main) { player.reloadTracks(listOf(track.id)) }
             TagSaveResult.Success
@@ -272,11 +315,16 @@ class TrackFileEditor(
     }.getOrDefault(false)
 
     /** Törlés után: várólista, listák, kedvencek és a zenetár következetessé tétele. */
-    suspend fun afterDeleted(track: Track) {
-        withContext(Dispatchers.Main) { player.removeTrackEverywhere(track.id) }
-        playlists.forgetTrack(track.id)
-        library.forget(track.id)
-        artwork.invalidate(track.id)
+    suspend fun afterDeleted(track: Track) = afterDeleted(listOf(track))
+
+    /** Több törölt fájl után ugyanez, egyetlen újraolvasással. */
+    suspend fun afterDeleted(tracks: List<Track>) {
+        withContext(Dispatchers.Main) { tracks.forEach { player.removeTrackEverywhere(it.id) } }
+        tracks.forEach { track ->
+            playlists.forgetTrack(track.id)
+            library.forget(track.id)
+            artwork.invalidate(track.id)
+        }
         library.refresh().join()
     }
 
@@ -357,7 +405,8 @@ class TrackFileEditor(
 
     companion object {
         private const val TAG = "TrackFileEditor"
-        const val OUTPUT_FOLDER = "SzabadZene"
+        private const val LYRICS_CACHE_SIZE = 64
+        const val OUTPUT_FOLDER = "Orotund"
         const val OUTPUT_RELATIVE_PATH = "Music/$OUTPUT_FOLDER"
 
         /** A vágott fájl mért hossza ennyivel térhet el a kérttől (keretillesztés, kódoló-késleltetés). */

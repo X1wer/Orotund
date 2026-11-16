@@ -36,6 +36,7 @@ import io.github.x1wer.szabadzene.R
 import io.github.x1wer.szabadzene.SzabadZeneApp
 import io.github.x1wer.szabadzene.data.library.Track
 import io.github.x1wer.szabadzene.data.settings.HeadsetSettings
+import io.github.x1wer.szabadzene.data.settings.PlaybackPrefs
 import io.github.x1wer.szabadzene.data.settings.SkipSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -64,6 +65,14 @@ class PlaybackService : MediaSessionService() {
     private val skipController = SkipController(clock = SystemClock::elapsedRealtime)
     private var skipSettings = SkipSettings()
     private var headsetSettings = HeadsetSettings()
+    private var playbackPrefs = PlaybackPrefs()
+
+    /** Lejátszásszámláló: a beszámított lejátszás az alkalmazás hatókörében íródik az adatbázisba. */
+    private val playCounter = PlayCountTracker(clock = SystemClock::elapsedRealtime) { mediaId ->
+        val id = mediaId.toLongOrNull() ?: return@PlayCountTracker
+        container.appScope.launch(Dispatchers.IO) { runCatching { container.playStats.recordPlay(id) } }
+    }
+    private var playCountJob: Job? = null
 
     /** Egymást követő lejátszási hibák száma; véd a végtelen továbbugrás ellen. */
     private var consecutiveErrors = 0
@@ -114,6 +123,7 @@ class PlaybackService : MediaSessionService() {
             onSkip = { direction -> performSkip(direction, stepMs = null) },
             stepMs = { direction -> stepFor(direction) },
             onItemsInserted = ::onItemsInserted,
+            restartThresholdMs = { playbackPrefs.restartThresholdMs },
         )
 
         session = MediaSession.Builder(this, sessionPlayer)
@@ -126,6 +136,15 @@ class PlaybackService : MediaSessionService() {
             container.settings.skipSettings.collect { settings ->
                 skipSettings = settings
                 session?.setMediaButtonPreferences(mediaButtons())
+                updateWidget()
+            }
+        }
+        scope.launch {
+            container.settings.playback.collect { prefs ->
+                val stopModeChanged = prefs.stopAfterCurrent != playbackPrefs.stopAfterCurrent
+                playbackPrefs = prefs
+                if (player.playbackParameters.speed != prefs.speed) player.setPlaybackSpeed(prefs.speed)
+                if (stopModeChanged) updatePauseAtEnd()
             }
         }
         scope.launch {
@@ -159,6 +178,7 @@ class PlaybackService : MediaSessionService() {
         isRunning = false
         current = null
         sleepJob?.cancel()
+        playCountJob?.cancel()
         effects.release()
         PlayerWidget.markStopped(applicationContext)
         audioManager?.unregisterAudioDeviceCallback(deviceCallback)
@@ -194,8 +214,13 @@ class PlaybackService : MediaSessionService() {
         onSleepTimerChanged()
     }
 
+    /** A szám végén szünet: az időzítő „szám végén” módja vagy a „leállás az aktuális szám végén” ismétlési mód. */
+    private fun updatePauseAtEnd() {
+        player.pauseAtEndOfMediaItems = sleepTimer.pauseAtEndOfItems || playbackPrefs.stopAfterCurrent
+    }
+
     private fun onSleepTimerChanged() {
-        player.pauseAtEndOfMediaItems = sleepTimer.pauseAtEndOfItems
+        updatePauseAtEnd()
         sleepJob?.cancel()
         sleepJob = (sleepTimer.state as? SleepTimerState.Timed)?.let {
             scope.launch {
@@ -241,6 +266,29 @@ class PlaybackService : MediaSessionService() {
         updateWidget()
     }
 
+    // --- Lejátszás/Keverés „a mostani szám végigszól” módban ---
+
+    /**
+     * A várólista a megadott számokra cserélődik, de a most szóló szám a helyén marad és zavartalanul
+     * szól tovább; utána sorrendben a lista következő száma, keverésnél egy véletlen szám jön. Közvetlenül
+     * az ExoPlayert módosítja (a beszúrás-figyelő itt nem kell, a kevert sorrendet maga állítja be).
+     */
+    private suspend fun playKeepingCurrent(ids: List<Long>, shuffle: Boolean) {
+        val current = player.currentMediaItem ?: return
+        if (ids.isEmpty()) return
+        val tracks = container.library.tracksByIds(ids)
+        val plan = QueueLogic.keepCurrentPlan(ids.filter { it in tracks }, current.mediaId.toLongOrNull(), shuffle, kotlin.random.Random.Default)
+        val currentIndex = player.currentMediaItemIndex
+        if (currentIndex + 1 < player.mediaItemCount) player.removeMediaItems(currentIndex + 1, player.mediaItemCount)
+        if (currentIndex > 0) player.removeMediaItems(0, currentIndex)
+        player.shuffleModeEnabled = shuffle
+        player.addMediaItems(0, plan.before.map { tracks.getValue(it).toMediaItem() })
+        player.addMediaItems(plan.after.map { tracks.getValue(it).toMediaItem() })
+        plan.shuffleOrder?.let { applyShuffleSequence(it) }
+        scheduleSave()
+        updateWidget()
+    }
+
     // --- Widget ---
 
     private fun updateWidget() {
@@ -250,6 +298,10 @@ class PlaybackService : MediaSessionService() {
             title = item?.mediaMetadata?.title?.toString(),
             artist = item?.mediaMetadata?.artist?.toString(),
             playing = player.playWhenReady && player.playbackState != Player.STATE_ENDED && item != null,
+            nextTitle = player.nextMediaItemIndex.takeIf { it != C.INDEX_UNSET && it < player.mediaItemCount }
+                ?.let { player.getMediaItemAt(it).mediaMetadata.title?.toString() },
+            backSeconds = skipSettings.backSeconds,
+            forwardSeconds = skipSettings.forwardSeconds,
         )
         widgetJob?.cancel()
         widgetJob = scope.launch {
@@ -452,6 +504,8 @@ class PlaybackService : MediaSessionService() {
                     Player.EVENT_PLAYBACK_STATE_CHANGED,
                     Player.EVENT_TIMELINE_CHANGED,
                     Player.EVENT_MEDIA_METADATA_CHANGED,
+                    Player.EVENT_REPEAT_MODE_CHANGED,
+                    Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
                 )
             ) {
                 updateWidget()
@@ -463,6 +517,7 @@ class PlaybackService : MediaSessionService() {
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_READY) playCounter.onDurationKnown(player.duration)
             if (playbackState == Player.STATE_ENDED && sleepTimer.state == SleepTimerState.EndOfTrack) {
                 sleepTimer.onTrackEnded()
                 onSleepTimerChanged()
@@ -478,11 +533,17 @@ class PlaybackService : MediaSessionService() {
                 reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
             ) {
                 skipController.onSeekReported(newPosition.mediaItem?.mediaId, newPosition.positionMs)
+                if (newPosition.mediaItemIndex == oldPosition.mediaItemIndex &&
+                    newPosition.positionMs < RESTART_POSITION_MS
+                ) {
+                    playCounter.onSeekToStart(player.isPlaying)
+                }
             }
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             skipController.reset()
+            playCounter.onItemStarted(mediaItem?.mediaId, player.duration.takeIf { it != C.TIME_UNSET } ?: 0L, player.isPlaying)
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
@@ -493,11 +554,28 @@ class PlaybackService : MediaSessionService() {
             if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
                 sleepTimer.onTrackEnded()
                 onSleepTimerChanged()
+                // „Leállás az aktuális szám végén”: a következő szám elejére állunk (szünetben),
+                // így a lejátszógomb azzal folytatja; az utolsó számnál az aktuális elejére.
+                if (playbackPrefs.stopAfterCurrent) {
+                    if (player.hasNextMediaItem()) player.seekToNextMediaItem() else player.seekTo(0L)
+                }
             }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) consecutiveErrors = 0
+            playCounter.onPlayingChanged(isPlaying)
+            playCountJob?.cancel()
+            playCountJob = if (isPlaying) {
+                scope.launch {
+                    while (isActive) {
+                        delay(PLAY_COUNT_CHECK_MS)
+                        playCounter.check()
+                    }
+                }
+            } else {
+                null
+            }
             // Lejátszás közben időnként a pozíciót is mentjük (váratlan leállás esetére).
             periodicSaveJob?.cancel()
             periodicSaveJob = if (isPlaying) {
@@ -550,6 +628,7 @@ class PlaybackService : MediaSessionService() {
                         add(PlaybackCommands.sleepTimerSet)
                         add(PlaybackCommands.sleepTimerCancel)
                         add(PlaybackCommands.reloadTracks)
+                        add(PlaybackCommands.playKeepCurrent)
                     }
                 }
                 .build()
@@ -578,6 +657,11 @@ class PlaybackService : MediaSessionService() {
                 PlaybackCommands.ACTION_RELOAD_TRACKS -> {
                     val ids = args.getLongArray(PlaybackCommands.EXTRA_TRACK_IDS)?.toSet().orEmpty()
                     scope.launch { reloadTracks(ids) }
+                }
+                PlaybackCommands.ACTION_PLAY_KEEP_CURRENT -> {
+                    val ids = args.getLongArray(PlaybackCommands.EXTRA_TRACK_IDS)?.toList().orEmpty()
+                    val shuffle = args.getBoolean(PlaybackCommands.EXTRA_SHUFFLE, false)
+                    scope.launch { playKeepingCurrent(ids, shuffle) }
                 }
                 else -> return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
             }
@@ -646,6 +730,9 @@ class PlaybackService : MediaSessionService() {
                 android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> androidx.media3.common.util.Util.handlePlayPauseButtonAction(sessionPlayer)
                 android.view.KeyEvent.KEYCODE_MEDIA_NEXT -> sessionPlayer.seekToNext()
                 android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS -> sessionPlayer.seekToPrevious()
+                // A widget ugrógombjai: ugyanaz a közös ugrási logika, mint a többi vezérlőé.
+                android.view.KeyEvent.KEYCODE_MEDIA_REWIND -> sessionPlayer.seekBack()
+                android.view.KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> sessionPlayer.seekForward()
                 else -> return false
             }
             return true
@@ -654,6 +741,10 @@ class PlaybackService : MediaSessionService() {
         private const val TAG = "PlaybackService"
         private const val SAVE_DEBOUNCE_MS = 1_000L
         private const val PERIODIC_SAVE_MS = 10_000L
+        private const val PLAY_COUNT_CHECK_MS = 1_000L
+
+        /** Ennél korábbra tekerve a szám „elejére” tekertünk (lejátszásszámláláshoz). */
+        private const val RESTART_POSITION_MS = 1_000L
 
         /** Visszacsatlakozáskor csak ennyin belül folytatja automatikusan (30 perc). */
         private const val RESUME_WINDOW_MS = 30 * 60 * 1000L

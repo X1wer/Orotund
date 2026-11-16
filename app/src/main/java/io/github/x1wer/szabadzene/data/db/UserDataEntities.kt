@@ -43,6 +43,7 @@ data class PlaylistSummary(
     val id: Long,
     val name: String,
     @ColumnInfo(name = "entry_count") val entryCount: Int,
+    @ColumnInfo(name = "created_at") val createdAt: Long = 0,
 )
 
 @Entity(tableName = "favorites")
@@ -69,4 +70,16 @@ data class PlaybackStateEntity(
     /** A kevert sorrend az alaplista indexeivel, vesszővel elválasztva (üres, ha nincs keverés). */
     @ColumnInfo(name = "shuffle_order") val shuffleOrder: String,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
+)
+
+/**
+ * Számonkénti lejátszási statisztika (3. adatbázis-verziótól). A számláló kézzel is módosítható;
+ * a [lastPlayedAt] az utolsó beszámított lejátszás ideje (ms), null, ha még nem volt ilyen
+ * (pl. a számlálót csak kézzel állították be).
+ */
+@Entity(tableName = "play_stats", indices = [Index("last_played_at")])
+data class PlayStatsEntity(
+    @PrimaryKey @ColumnInfo(name = "track_id") val trackId: Long,
+    @ColumnInfo(name = "play_count") val playCount: Int,
+    @ColumnInfo(name = "last_played_at") val lastPlayedAt: Long?,
 )

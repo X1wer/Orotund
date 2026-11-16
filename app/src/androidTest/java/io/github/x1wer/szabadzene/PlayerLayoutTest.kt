@@ -12,7 +12,7 @@ import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -20,6 +20,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.then
 import androidx.compose.ui.unit.DpRect
@@ -32,7 +34,9 @@ import io.github.x1wer.szabadzene.playback.PlaybackUiState
 import io.github.x1wer.szabadzene.playback.SkipDirection
 import io.github.x1wer.szabadzene.ui.components.SkipButtonMinSize
 import io.github.x1wer.szabadzene.ui.components.SkipButtonTags
+import androidx.compose.foundation.layout.Box
 import io.github.x1wer.szabadzene.ui.player.FullPlayerContent
+import io.github.x1wer.szabadzene.ui.player.FullPlayerTags
 import io.github.x1wer.szabadzene.ui.player.MiniPlayerContent
 import io.github.x1wer.szabadzene.ui.player.MiniPlayerTags
 import io.github.x1wer.szabadzene.ui.player.PlayerCallbacks
@@ -166,9 +170,79 @@ class PlayerLayoutTest {
             }
         }
         compose.onNodeWithTag(SkipButtonTags.BACK)
-            .assertTextContains(context.getString(R.string.skip_back_label, 5))
+            .assertContentDescriptionContains(context.getString(R.string.cd_skip_back, 5))
         compose.onNodeWithTag(SkipButtonTags.FORWARD)
-            .assertTextContains(context.getString(R.string.skip_forward_label, 30))
+            .assertContentDescriptionContains(context.getString(R.string.cd_skip_forward, 30))
+    }
+
+    @Test
+    fun roomyFullPlayerShowsExtraSkipButtonsBothWays() {
+        val by = mutableListOf<Pair<SkipDirection, Int>>()
+        compose.setContent {
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(412.dp, 900.dp))) {
+                MaterialTheme {
+                    FullPlayerContent(
+                        playing,
+                        SkipSettings(),
+                        callbacks.copy(onSkipBy = { d, s -> by += d to s }, onOpenSkipSettings = {}),
+                        onMinimize = {},
+                        onMoreActions = {},
+                    )
+                }
+            }
+        }
+        // Alapból: −30 −10 −5 | +5 +10 +30, mindegyik legalább 56 × 56 dp, egymást nem fedve.
+        val tags = listOf(
+            SkipButtonTags.extra(SkipDirection.BACK, 30),
+            SkipButtonTags.BACK,
+            SkipButtonTags.extra(SkipDirection.BACK, 5),
+            SkipButtonTags.extra(SkipDirection.FORWARD, 5),
+            SkipButtonTags.FORWARD,
+            SkipButtonTags.extra(SkipDirection.FORWARD, 30),
+            PlayerTags.SKIP_SETTINGS,
+        )
+        tags.dropLast(1).forEach {
+            compose.onNodeWithTag(it).assertIsDisplayed()
+                .assertWidthIsAtLeast(SkipButtonMinSize).assertHeightIsAtLeast(SkipButtonMinSize)
+        }
+        compose.onNodeWithTag(PlayerTags.SKIP_SETTINGS).assertIsDisplayed()
+        assertNoOverlap(tags + controlTags.drop(2))
+        compose.onNodeWithTag(SkipButtonTags.extra(SkipDirection.BACK, 30)).performClick()
+        compose.onNodeWithTag(SkipButtonTags.extra(SkipDirection.FORWARD, 5)).performClick()
+        compose.onNodeWithTag(SkipButtonTags.FORWARD).performClick()
+        compose.waitForIdle()
+        assertEquals(listOf(SkipDirection.BACK to 30, SkipDirection.FORWARD to 5), by)
+        assertEquals(listOf(SkipDirection.FORWARD), skips)
+    }
+
+    @Test
+    fun repeatButtonOpensModeChooserAndLyricsTabKeepsControls() {
+        var repeatOpens = 0
+        compose.setContent {
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(360.dp, 740.dp))) {
+                MaterialTheme {
+                    FullPlayerContent(
+                        playing.copy(nextTitle = "Következő szám", queuePosition = 3, queueSize = 10),
+                        SkipSettings(),
+                        callbacks.copy(onOpenRepeat = { repeatOpens++ }, onOpenQueue = {}),
+                        onMinimize = {},
+                        onMoreActions = {},
+                        lyrics = { modifier -> Box(modifier) },
+                    )
+                }
+            }
+        }
+        compose.onNodeWithTag(PlayerTags.NEXT_UP).assertIsDisplayed()
+        compose.onNodeWithTag(PlayerTags.QUEUE)
+            .assertContentDescriptionContains(context.getString(R.string.cd_queue_position, 3, 10))
+        compose.onNodeWithTag(PlayerTags.REPEAT).performClick()
+        compose.waitForIdle()
+        assertEquals(1, repeatOpens)
+        compose.onNodeWithTag(FullPlayerTags.TAB_LYRICS).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag(FullPlayerTags.LYRICS).assertIsDisplayed()
+        controlTags.forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
+        assertSkipButtonsUsable()
     }
 
     @Test
@@ -255,7 +329,7 @@ class PlayerLayoutTest {
     // --- Minilejátszó ---
 
     @Test
-    fun miniPlayerSingleRowHasDirectSkipButtons() {
+    fun miniPlayerHasDirectSkipButtons() {
         compose.setContent {
             DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(411.dp, 200.dp))) {
                 MaterialTheme {
@@ -290,10 +364,48 @@ class PlayerLayoutTest {
         assertSkipButtonsUsable()
         assertNoOverlap(listOf(SkipButtonTags.BACK, SkipButtonTags.FORWARD, PlayerTags.PLAY_PAUSE, MiniPlayerTags.BODY))
         compose.onNodeWithTag(SkipButtonTags.BACK)
-            .assertTextContains(context.getString(R.string.skip_back_label, 10))
+            .assertContentDescriptionContains(context.getString(R.string.cd_skip_back, 10))
         compose.onNodeWithTag(SkipButtonTags.FORWARD).performClick()
         compose.waitForIdle()
         assertEquals(listOf(SkipDirection.FORWARD), skips)
+        assertEquals(0, opens)
+    }
+
+    @Test
+    fun miniPlayerChangesTracksWithButtonsAndSwipe() {
+        var next = 0
+        var previous = 0
+        var queue = 0
+        compose.setContent {
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(360.dp, 300.dp))) {
+                MaterialTheme {
+                    MiniPlayerContent(
+                        playing.copy(queuePosition = 22, queueSize = 48, nextTitle = "Következő"),
+                        SkipSettings(),
+                        callbacks.copy(onNext = { next++ }, onPrevious = { previous++ }, onOpenQueue = { queue++ }),
+                        onOpen = { opens++ },
+                    )
+                }
+            }
+        }
+        val tags = listOf(
+            SkipButtonTags.BACK, PlayerTags.PREVIOUS, PlayerTags.PLAY_PAUSE, PlayerTags.NEXT,
+            SkipButtonTags.FORWARD, MiniPlayerTags.BODY, PlayerTags.QUEUE,
+        )
+        tags.forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
+        assertNoOverlap(tags)
+        assertSkipButtonsUsable()
+        compose.onNodeWithTag(PlayerTags.NEXT).performClick()
+        compose.onNodeWithTag(PlayerTags.PREVIOUS).performClick()
+        compose.onNodeWithTag(PlayerTags.QUEUE).performClick()
+        compose.waitForIdle()
+        assertEquals(listOf(1, 1, 1), listOf(next, previous, queue))
+        // Húzás balra: következő szám; jobbra: előző. A teljes lejátszó nem nyílik meg.
+        compose.onNodeWithTag(MiniPlayerTags.BODY).performTouchInput { swipeLeft() }
+        compose.waitForIdle()
+        compose.onNodeWithTag(MiniPlayerTags.BODY).performTouchInput { swipeRight() }
+        compose.waitForIdle()
+        assertEquals(listOf(2, 2), listOf(next, previous))
         assertEquals(0, opens)
     }
 }

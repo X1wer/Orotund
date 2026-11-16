@@ -1,26 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Saját ikon: két hangjegy egy hullámvonal fölött (108 × 108 dp-s adaptív ikonterület). -->
+<!--
+  Zengő / Orotund ikon (108 × 108 dp-s adaptív terület, a lényeg a középső 66 dp-s körön belül):
+  rügyzöld hangjegy, amelynek zászlója kibomló levél, a feje mellett két hanghullám.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Hangjegyek szára és gerendája -->
-    <path
-        android:fillColor="@color/launcher_foreground"
-        android:pathData="M46,32 L72,27 L72,59 L68,59 L68,35 L50,38.5 L50,64 L46,64 Z" />
-    <!-- Hangjegyfejek -->
-    <path
-        android:fillColor="@color/launcher_foreground"
-        android:pathData="M48,64 m-7,0 a7,5.5 0,1 0,14 0 a7,5.5 0,1 0,-14 0" />
-    <path
-        android:fillColor="@color/launcher_foreground"
-        android:pathData="M70,59 m-7,0 a7,5.5 0,1 0,14 0 a7,5.5 0,1 0,-14 0" />
-    <!-- Hullám -->
-    <path
-        android:strokeColor="@color/launcher_foreground"
-        android:strokeWidth="3"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:pathData="M34,78 Q41,72 48,78 T62,78 T76,78" />
+    <!-- A teljes rajz kicsinyítve és lejjebb tolva, hogy a kerek maszk se vágja le (biztonságos 66 dp-s kör). -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.75"
+        android:scaleY="0.75"
+        android:translateY="2">
+        <!-- Hanghullámok -->
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M37,60.5 A15,15 0 0,0 37,75.5"
+            android:strokeAlpha="0.9"
+            android:strokeColor="#FFA6D957"
+            android:strokeLineCap="round"
+            android:strokeWidth="3.5" />
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M32,55.4 A22,22 0 0,0 32,80.6"
+            android:strokeAlpha="0.5"
+            android:strokeColor="#FFA6D957"
+            android:strokeLineCap="round"
+            android:strokeWidth="3.5" />
+        <!-- Szár, fej és levél egy színátmenettel -->
+        <path android:pathData="M55.5,66 L55.5,32 L59,32 L59,66 Z M41.54,71.08 A9,7 -20 1,1 58.46,64.92 A9,7 -20 1,1 41.54,71.08 Z M57,33 C60,23 71,19 80,22 C77,31 67,36.5 57,36.5 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:endColor="#FF6FAE2E"
+                    android:endX="54"
+                    android:endY="78"
+                    android:startColor="#FFCDEE72"
+                    android:startX="62"
+                    android:startY="20"
+                    android:type="linear" />
+            </aapt:attr>
+        </path>
+        <!-- A levél ere -->
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M59,34.5 C65,30 71,27 77,23.5"
+            android:strokeColor="#FF2E5A1E"
+            android:strokeLineCap="round"
+            android:strokeWidth="1.2" />
+    </group>
 </vector>

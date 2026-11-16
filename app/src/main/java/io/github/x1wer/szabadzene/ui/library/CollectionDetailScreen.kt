@@ -9,7 +9,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.FolderOff
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
+import io.github.x1wer.szabadzene.ui.components.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -96,6 +96,7 @@ fun CollectionDetailScreen(
                                     artworkTrackId = current.artworkTrackId,
                                     tracks = current.tracks,
                                     extraActions = extra,
+                                    playlistName = title,
                                 ),
                             )
                         },

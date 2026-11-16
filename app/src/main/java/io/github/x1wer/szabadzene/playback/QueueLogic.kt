@@ -15,6 +15,20 @@ data class SavedQueue(
     val shuffleOrder: List<Int>,
 )
 
+/**
+ * Új várólista a most szóló szám körül („a mostani szám végigszól” mód): a [before] azonosítók az
+ * aktuális szám elé, az [after] azonosítók mögé kerülnek az alaplistában. Keverésnél a [shuffleOrder]
+ * az új alaplista indexeit adja lejátszási sorrendben, az aktuális számmal kezdve.
+ */
+data class KeepCurrentPlan(
+    val before: List<Long>,
+    val after: List<Long>,
+    val shuffleOrder: List<Int>?,
+) {
+    val currentIndex: Int get() = before.size
+    val size: Int get() = before.size + 1 + after.size
+}
+
 /** A visszaállítandó várólista: csak a még elérhető számokkal. */
 data class RestoredQueue<T>(
     val items: List<T>,
@@ -83,6 +97,22 @@ object QueueLogic {
     fun appendOrder(order: List<Int>, inserted: List<Int>): List<Int> {
         val insertedSet = inserted.toSet()
         return order.filterNot { it in insertedSet } + inserted
+    }
+
+    /**
+     * A „mostani szám végigszól” mód: az [ids] lista (a zenetár sorrendjében) lesz az új várólista úgy,
+     * hogy a most szóló szám a helyén marad. Ha a szám benne van a listában, sorrendben utána a lista
+     * következő száma jön; ha nincs benne, a lista elejével folytatódik. Keverésnél a mostani szám után
+     * a többi szám véletlen sorrendben jön.
+     */
+    fun keepCurrentPlan(ids: List<Long>, currentId: Long?, shuffle: Boolean, random: kotlin.random.Random): KeepCurrentPlan {
+        val at = if (currentId == null) -1 else ids.indexOf(currentId)
+        val before = if (at >= 0) ids.subList(0, at).toList() else emptyList()
+        val after = if (at >= 0) ids.subList(at + 1, ids.size).filter { it != currentId } else ids.filter { it != currentId }
+        val plan = KeepCurrentPlan(before, after, shuffleOrder = null)
+        if (!shuffle) return plan
+        val others = (0 until plan.size).filter { it != plan.currentIndex }.shuffled(random)
+        return plan.copy(shuffleOrder = listOf(plan.currentIndex) + others)
     }
 
     fun encodeOrder(order: List<Int>): String = order.joinToString(",")

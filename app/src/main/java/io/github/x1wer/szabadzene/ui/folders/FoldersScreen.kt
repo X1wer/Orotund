@@ -8,7 +8,7 @@ import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.FolderOff
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
+import io.github.x1wer.szabadzene.ui.components.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
@@ -79,6 +79,7 @@ fun FoldersScreen(
                             subtitle = group.detail.orEmpty(),
                             artworkTrackId = group.artworkTrackId,
                             tracks = group.tracks,
+                            playlistName = group.name ?: unknown,
                             extraActions = listOf(
                                 TrackAction(excludeLabel, Icons.Rounded.FolderOff, "action_exclude_folder") {
                                     scope.launch { container?.settings?.excludeFolder(group.key) }

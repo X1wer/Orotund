@@ -299,3 +299,244 @@ Részletes eredmények: `TESZTOSSZEFOGLALO.md`; licencek: `LICENCEK.md`; haszná
 - API 28-on nincs `scan_volume`: `adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/...`.
 - `adb shell` idézőjelezés: szóközös útvonalnál `adb shell "rm '/sdcard/Music/x y.mp3'"`.
 - Műszeres tesztek eszközönként: `ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest` (a futás után az app eltávolítódik).
+
+---
+
+## 5. rész – lejátszó-bővítések, lejátszásszám, dalszöveg · KÉSZ (2026-11-16) · 1.1.0
+
+A felhasználó egy másik lejátszó képernyőképei alapján kért bővítéseket; a követelmények:
+`KOVETELMENYEK.md` 9. fejezet. A két kiemelt elvárás nem gyengült (a minilejátszóban és a teljes
+lejátszóban is megmaradt a fő ±N mp-es pár, minden ugrógomb legalább 56 × 56 dp).
+
+### Elkészült
+- **Zenetár:** mindig látható keresőmező a Számok fül tetején („Dalok keresése (N)”) a rendezés gombjával;
+  alapértelmezett rendezés: a legújabb szám felül (`LibrarySort` alapértéke; mezőváltáskor a természetes irány).
+- **Minilejátszó:** borító, cím, előadó, „» következő szám”, várólista-sorszám (#22/48 → várólista);
+  vezérlők: −N, előző, lejátszás, következő, +N; vízszintes húzás vált számot. Kétsoros (600 dp alatt), széles
+  kijelzőn egysoros. 2,0× betűnél a „következő szám” sor elmarad.
+- **Előző gomb:** beállítható küszöb (3/5/10/15/30 mp, alapból 10 mp, korábban rögzített 3 mp):
+  `PreviousLogic` + `SkipAwarePlayer.seekToPrevious` – így az értesítés, a fejhallgató és a widget is ezt követi.
+- **Teljes lejátszó:** fejléc (várólista sorszámmal, Dal/Dalszöveg), „» következő”, műveletsor (sebesség,
+  hangszínszabályzó, kedvenc, listához adás, időzítő, hangerő), több ugrógomb (alapból −30 −10 −5 | +5 +10 +30,
+  a fő érték mindig; helyhiánynál előbb a fogaskerék, aztán a további gombok maradnak el), vezérlősor keveréssel
+  és ismétléssel. Ismétlés: 4 módú választó, köztük „leállás az aktuális dal végén” (`PlaybackPrefs.stopAfterCurrent`,
+  a szolgáltatás `pauseAtEndOfMediaItems`-szel hajtja végre, majd a következő szám elejére áll).
+- **Sebesség** (0,5–2,0×, tárolva, a szolgáltatás alkalmazza), **hangerő** (rendszer médiahangereje).
+- **Lejátszásszám:** Room v3, `play_stats` tábla (AutoMigration 2→3); `PlayCountTracker` (fél szám, legfeljebb
+  4 perc tényleges hallgatás; lejátszásonként egyszer); kézi átírás a számmenüben; Listák fül: Legtöbbet játszott,
+  Nemrég játszott (100-100), előzmények törlése / számlálók nullázása; fájltörléskor a statisztika is törlődik.
+- **Dalszöveg:** beágyazott dalszöveg olvasása/írása (`TagValues.lyrics`, null = nem nyúl hozzá; a címkeszerkesztő
+  így nem írja felül), `LrcParser` (időzített LRC, offset, fejléc-címkék, szavankénti jelölés), Dalszöveg nézet
+  kiemeléssel és koppintásra tekeréssel, szerkesztő .lrc/.txt importtal (UTF-8, különben Windows-1250).
+- **Beállítások:** ugrógombok a teljes lejátszóban, Előző-küszöb, lejátszási sebesség; súgó két új témával.
+- Mellékesen javítva: az `app/build.gradle.kts` egy része Latin-1 kódolású volt → UTF-8.
+
+### Tesztek – ténylegesen lefuttatva (végleges kódon)
+- JVM-egységtesztek (`clean` után): **120/120** (új: `PlayerExtrasLogicTest` 9, `PlayCountTrackerTest` 8,
+  `LyricsAndStatsTest` 7, `TagEditorTest.lyricsWriteReadAndKeepOtherTags`).
+- Műszeres tesztek: **33/33 `Clean_API_37`-en és 33/33 `Medium_Phone_API_28`-on** (új: több ugrógomb és
+  `onSkipBy`, ismétlés-választó + Dalszöveg fül a kezelőszervekkel, minilejátszó gombjai/húzás/várólista,
+  `play_stats` DAO, migráció 2→3).
+- `lintDebug`: 0 hiba, 15 figyelmeztetés (függőségverziók, többes szám-javaslatok, API 31+ widget-attribútumok).
+- Kézi ellenőrzés `Clean_API_37`-en (képernyőképek a munkamenet ideiglenes mappájában):
+  keresőmező és legújabb-elöl rendezés; minilejátszó (#2/11, » következő, előző/következő); teljes lejátszó
+  6 ugrógombbal + fogaskerékkel (411 dp); Előző: 40 mp-nél elejére, másodszorra előző szám; számláló
+  (12 mp-es szám kétszer számolt), kézi átírás 2 → 6 és átrendeződés; Nemrég játszott sorrend; ismétlés-választó;
+  leállás mód: a 60 mp-es szám végén szünet, a következő szám 0:00-n; sebesség 1.5× (a munkamenet is 1.5-öt
+  jelent); dalszöveg hozzáadása FLAC-hoz (rendszer írási engedélye) és időzített kiemelés lejátszás közben;
+  Beállítások új sorai; 720×1280, 360 dpi, 2,0× betű: minilejátszó gombjai elférnek.
+
+### Nem tesztelt / valódi készüléken ellenőrizendő
+- Android 9-en csak a műszeres tesztek futottak; az új funkciókat kézzel nem próbáltam ott (a dalszöveg-mentés
+  ugyanazt az engedélyutat használja, mint a 4. részben Android 9-en kipróbált címkeírás).
+- A hangerő-ablak valódi Bluetooth-eszközzel (abszolút hangerő), illetve fix hangerejű készüléken.
+- A húzásos számváltás érzékenysége valódi ujjal.
+
+### Ismert korlátok, megjegyzések
+- Külön .lrc fájlt az app magától nem olvas (Android 13+ alatt a hangfájl-engedély nem ad hozzáférést a
+  szövegfájlokhoz); a szerkesztőben fájlból importálva a zenefájlba kerül.
+- A lejátszásszám csak az 1.1.0 telepítése óta gyűlik; korábbi lejátszásokról nincs adat.
+- A teljes lejátszóban kb. 400 dp szélesség alatt a fogaskerék elmarad (a beállítás a Beállításokban is elérhető).
+
+---
+
+## 6. rész – méretek, kijelölés, fülváltás húzással, listaimport · KÉSZ (2026-11-16) · 1.2.0
+
+A felhasználó kérései: állítható betű- és szimbólumméret; Lejátszás és Keverés gomb a főoldalon; erősebb
+elválasztás a számok között; oldalra húzással váltás az alsó fülek között; több szám kijelölése és együttes
+kezelése; szélesebb, „menőbb” oldalsó menügomb; lejátszási listák importálása (pl. egy mappából).
+Követelmények: `KOVETELMENYEK.md` 10. fejezet. A két kiemelt elvárás nem gyengült (a menüterület 64 → 72 dp
+széles, minimum 64 × 64 dp; az ugrógombok változatlanok).
+
+### Elkészült
+- **Betű- és ikonméret** (Beállítások → Megjelenés, 85/100/115/130/150%): `AppearanceSettings.textScalePercent`,
+  `iconScalePercent`; `ui/theme/UiScale.kt` (`ProvideUiScale`, `LocalIconScale`). A betűszorzó a rendszerével
+  együtt legfeljebb 2,0×; 100%-nál a rendszer sűrűsége érintetlen. Minden ikon az `ui/components/Icon.kt`
+  burkolón át jelenik meg (a méretet a `size` paraméter adja, nem a módosító – így hat rá a szorzó); a
+  borító helyőrzője szándékosan a Material `Icon`. Az alsó navigáció ikonja legfeljebb 1,3×.
+- **Számok fül:** „Lejátszás”/„Keverés” gomb a keresőmező alatt (a látható sorrendben); kijelölés gomb a
+  keresőmező mellett. Kijelölő mód (`TrackSelection` a `TrackList`-ben; hosszú nyomással is indul):
+  jelölőnégyzet, kiemelt háttér, felső sáv (bezárás, „N kijelölve”, mind/egyik sem, lejátszás, ⋮). A ⋮ a
+  gyűjteménymenüt nyitja `selectionActions`-szel (kedvencek, megosztás – `ACTION_SEND_MULTIPLE` –, törlés),
+  `onFinished` zárja a kijelölést. Vissza gomb, keresés és fülváltás kilép a kijelölésből.
+- **Több fájl törlése:** `MenuState.deleteFiles` (lista; a régi `deleteFile` helyett), egy megerősítés, Android
+  11-től egy rendszerablak az összes fájlra, régebben fájlonként `deleteLegacy`; `afterDeleted(list)` egyetlen
+  újraolvasással; részleges sikernél „törölve: x / y”.
+- **Számsorok:** 1 dp-s `outlineVariant` elválasztó vonal (`Modifier.rowDivider`) a szám- és gyűjteménysorokon;
+  közös `RowMenuArea`: 72 dp széles, teljes sormagasságú terület, közepén tónusos kör „•••” ikonnal (az éppen
+  szóló számnál `primaryContainer`), körkörös hullám.
+- **Fülváltás húzással:** `AppRoot.MainScaffold` → `HorizontalPager` (mind a négy oldal komponálva marad,
+  `beyondViewportPageCount = 3`), fülenként saját `NavHost` és `NavController`. A Vissza gombot csak a látható
+  fül navigációja kapja (a többi oldal egy néma `OnBackPressedDispatcher`-t lát); a fül gyökerén a Vissza az első
+  fülre visz; az aktív fülre koppintva a fül kezdőképernyője jön.
+- **Listaimport:** `data/playlists/PlaylistImport.kt` (tiszta Kotlin: `PlaylistFileParser` M3U/M3U8/PLS,
+  UTF-8 vagy windows-1250; `PlaylistPaths`; `PlaylistMatcher`; `uniquePlaylistName`) és `PlaylistImporter`
+  (SAF: `OpenMultipleDocuments` / `OpenDocumentTree`, mappa almappákkal 3 szintig, max. 300 fájl; a listafájl
+  mappája a dokumentumazonosítóból). Felület: `ui/playlists/PlaylistImportUi.kt` (Listák fejléc, összesítő
+  ablak). „Mentés új listaként” az album/előadó/műfaj/mappa menüjében (`CollectionMenuRequest.playlistName`).
+- Súgó: két új téma (kijelölés, listaimport), a számmenü leírása frissítve; verzió 1.2.0 (versionCode 6).
+
+### Tesztek – ténylegesen lefuttatva (végleges kódon)
+- JVM-egységtesztek (`clean` után): **132/132** (új: `PlaylistImportTest` 12 – M3U/PLS olvasás, kódolás,
+  útvonalak, dokumentumazonosító → mappa, párosítás abszolút/relatív/idegen útvonallal, kétértelmű fájlnév és
+  eltérő hossz elutasítása, cím szerinti tartalék, sorrend és hiányzók, egyedi név, méretszorzók).
+- Műszeres tesztek: **39/39 `Clean_API_37`-en és 39/39 `Medium_Phone_API_28`-on** (új: `SelectionAndScaleTest` 3 –
+  hosszú nyomás, koppintásos és jelölőnégyzetes kijelölés, a menü kijelölő módban is csak menü; 72 dp-s
+  menüterület 1,5× ikonnal és 2,0× betűvel 320 dp-n; ikon- és betűszorzó; `MainNavigationTest` 3 – húzás a
+  fülek között, Vissza előbb a fülön belül, majd az első fülre; a fül megtartja a képernyőjét).
+- `lintDebug`: 0 hiba, 15 figyelmeztetés (ugyanazok, mint az 1.1.0-ban).
+- Kézi ellenőrzés `Clean_API_37`-en: új számsorok és gombok; kijelölés gombbal, 3 szám → kedvencekhez (a sáv
+  bezárult, „3 szám a kedvencek közé került”); oldalra húzás a Listák fülre; mappaimport (Music/Listak:
+  Buli 3/4, Edzes 2/2 almappából, .txt kihagyva) és fájlimport (windows-1250 kódolású Regi.m3u 1/1); az
+  importált lista tartalma és sorrendje; 150%-os betű és ikon a zenetárban és a teljes lejátszóban (az
+  ugrógombok elférnek; a „Lejátszás” felirat kettétörését javítottam); két ideiglenes másolat törlése
+  kijelöléssel, egy rendszerablakkal (a fájlok eltűntek); album mentése új listaként.
+- Kézi ellenőrzés `Medium_Phone_API_28`-on: hosszú nyomásos kijelölés, Vissza, húzás a Listák fülre; import a
+  Letöltésekből (2/4 – az egyik bejegyzés szándékosan hibás hosszát az app helyesen elvetette).
+
+### Nem tesztelt / valódi készüléken ellenőrizendő
+- A fülek közötti húzás és a minilejátszó húzása valódi ujjal (egymás mellett nem ütköznek: a minilejátszó
+  a lapozón kívül van).
+- Több fájl törlése és megosztása Android 9-en kézzel (a törlési út ugyanaz, mint az egyes törlésé).
+- Nagyon nagy (több ezer számos) zenetár és lista importálásának sebessége.
+
+### Ismert korlátok, megjegyzések
+- A kijelölés csak a Számok fülön van (album, lista, keresési találatok nézetben nincs).
+- Az import a hálózati (http) bejegyzéseket kihagyja; .wpl/.xspf formátumot nem olvas. Azonos nevű listánál
+  „Név (2)” jön létre (újraimportáláskor is). Csak fájlnév szerint egyező bejegyzést csak akkor fogad el, ha
+  egyértelmű, és ha a listafájl megadja a hosszt, az is egyezik (±3 mp).
+- A betűméret-szorzó a rendszer betűméretével együtt legfeljebb 2,0×; 2,0×-es rendszerbetűnél nincs hatása.
+
+---
+
+## 7. rész – zenetár fejléc és fülek, Lejátszás/Keverés viselkedés, widget, listaexport · KÉSZ (2026-11-16) · 1.3.0
+
+A felhasználó kérései: a „Zenetár” fejléc tűnjön el lefelé görgetéskor, és csak a lista tetején jöjjön vissza;
+beállítható legyen, mely belső fülek látszanak (egyetlen fülnél tűnjön el a fülsáv); a Lejátszás és a Keverés
+csak ikon legyen a keresősáv mellett, és beállítható legyen, mit tegyenek, ha már szól zene (a mostani szám ne
+ugorjon el, utána érvényesüljön az új szabály); a widget új elrendezése (balra a borító, jobbra felül a gombok,
+a két szélen ±N mp, alattuk a cím, alatta kisebben a következő szám); listaexport kiválasztható listákkal.
+Követelmények: `KOVETELMENYEK.md` 11. fejezet. A két kiemelt elvárás nem változott.
+
+### Elkészült
+- **Fejléc:** `LibraryScreen` – `TopAppBarDefaults.exitUntilCollapsedScrollBehavior()`; a `nestedScroll` csak
+  akkor kapcsolódik, amikor a fejléc látszik (keresésben és kijelölésben nem, különben a rejtett fejléc
+  elnyelné a görgetést); fülváltáskor visszaáll. A fülsáv a helyén marad.
+- **Fülek:** `LibrarySection` (TRACKS, ALBUMS, ARTISTS, GENRES) és `LibraryLayout` a beállításokban
+  (`library_sections`, kanonikus sorrend, legalább egy); `ui/library/LibraryTabsDialog.kt` (az utolsó bejelölt
+  fül nem kapcsolható ki). Megnyitható a fejléc ⋮ menüjéből és a Beállítások → Zenetár részből. Egy fülnél
+  nincs `PrimaryScrollableTabRow`. A betöltésig (egy képkocka) nem rajzol fület.
+- **Lejátszás/Keverés:** `PlayShuffleIconButtons` (48 dp-s kitöltött / tónusos ikongomb) a keresőmező mellett;
+  a kijelölés és a rendezés gombja a fejlécbe került. Közös művelet: `rememberPlayAll()` →
+  `PlayerConnection.playAll(tracks, shuffle, keepCurrent)`; az album- és listanézet gombjai is ezt használják.
+  A Lejátszás most kikapcsolja a keverést (`playInOrder`).
+- **„A mostani szám végigszól” mód:** `PlaybackPrefs.playButtons` (`PlayButtonMode.RESTART` alapból /
+  `AFTER_CURRENT`). Ha szól zene, a `PLAY_KEEP_CURRENT` munkamenet-parancs megy a szolgáltatásnak
+  (`PlaybackService.playKeepingCurrent`): a most szóló elem marad, előtte/utána lecserélődik a lista
+  (`QueueLogic.keepCurrentPlan`), keverésnél a kevert sorrend a mostani számmal kezdődik. Visszajelzés:
+  `LocalSnackbarHost` („A mostani szám után keverve/sorrendben folytatódik”).
+- **Widget:** új `widget_player.xml` (76 dp-s borító, gombsor: −N mp, előző, lejátszás, következő, +N mp; cím;
+  „Következő: …”); `PlayerWidget.Snapshot` + `nextTitle`, `backSeconds`, `forwardSeconds`; az ugrás
+  `KEYCODE_MEDIA_REWIND/FAST_FORWARD` → `sessionPlayer.seekBack/seekForward` (a közös ugrási logika). A
+  szolgáltatás az ugrás-beállítás, az ismétlés és a keverés változásakor is frissíti. Alapméret 4 × 1
+  (`targetCell` 4 × 1; a `minHeight` szándékosan 40 dp, mert Android 12 előtt a launcher ebből számolja a sorokat).
+- **Export:** `data/playlists/PlaylistExport.kt` (tiszta Kotlin: `StorageLocation`, `PlaylistFileWriter` –
+  fájlnév, egyedi név, relatív útvonal, M3U8) és `PlaylistExporter` (SAF: `OpenDocumentTree`, `createDocument`,
+  felülírásnál „wt”); `ui/playlists/PlaylistExportUi.kt` (Listák fejléc, kiválasztó ablak, összesítő).
+- Súgó és szövegek frissítve (kijelölés, import/export, widget, számmenü); verzió 1.3.0 (versionCode 7).
+
+### Tesztek – ténylegesen lefuttatva (végleges kódon)
+- JVM-egységtesztek (`clean` után, majd a végleges kódon újra): **142/142** (új: `PlaylistExportTest` 10 – tárhely és
+  mappa a dokumentumazonosítóból, relatív útvonal, helyes/egyedi fájlnév, M3U8 tartalom, export → import
+  visszaolvasás ugyanazokra a számokra, a fülek beállításának szabályai, „a mostani szám végigszól” terv
+  sorrendben, listán kívüli számmal és keverve).
+- Műszeres tesztek: **44/44 `Clean_API_37`-en és 44/44 `Medium_Phone_API_28`-on** (új: `LibraryLayoutTest` 5 – a
+  fejléc eltűnik és visszajön, egy fülnél nincs fülsáv és az utolsó fül nem kapcsolható ki, az ikonok a keresőmező
+  mellett, „a mostani szám végigszól” mód a valódi lejátszóval, az export kiválasztó ablaka). A teszt friss
+  telepítésen egy valódi hibát is kimutatott (lásd lent), javítva.
+- `lintDebug`: 0 hiba, 15 figyelmeztetés (a widget szándékos eltéréseit `tools:ignore` jelöli).
+- Kézi ellenőrzés `Clean_API_37`-en (51 számmal): fejléc eltűnése/visszatérése, részleges visszagörgetésnél
+  rejtve marad; fülek ablaka (fejléc ⋮ és Beállítások), egy fülnél nincs fülsáv; „a mostani szám végigszól”:
+  Keverés → a szóló szám marad (#5/51 → #1/51), üzenet; Lejátszás → #5/51, a pozíció folyamatosan nő; widget
+  4 × 1: borító, cím, „Következő: Tavaszi szél”, lejátszás, +10/−10 mp (123,9 → 134,2 → 124,7 s); import
+  (3/4, 2/2, 1/1); export a Music/Export mappába relatív útvonalakkal; második export „(2)” fájlokkal;
+  felülírással a meglévő fájl tartalma cserélődik (2091 → 117 bájt, maradék nélkül).
+- Kézi ellenőrzés `Medium_Phone_API_28`-on: a widget 4 × 1-ként kerül ki, a tartalma egy sorba fér.
+- **Javított hiba:** ha a folyamat engedély nélkül indult (widget, médiagomb), és az engedélyt később a
+  rendszerbeállításokban adták meg, a Zenetár végtelenül „beolvasott”. Most a `LibraryScreen` is indítja a
+  beolvasást, ha engedélyt lát (`LibraryRepository.start()` egyszeri, többször hívható).
+
+### Nem tesztelt / valódi készüléken ellenőrizendő
+- A fejléc eltűnése és a widget valódi telefonon, más launcherrel (pl. Samsung One UI: a cellaméret eltér, a
+  widget 4 × 1-es alapmérete ott más lehet).
+- Export SD-kártyára és a Letöltések-szolgáltatóba (ott teljes útvonal kerül a fájlba); nagyon nagy listák.
+- Az „a mostani szám végigszól” mód több ezer számos zenetárral (a parancs az összes azonosítót átküldi).
+
+### Ismert korlátok, megjegyzések
+- A „Felülírás” jelölő a munkameneten belül megjegyzi az utolsó állapotát.
+- Az export kiválasztó ablaka a listák állapotát a megnyitáskor olvassa; az automatikus listák (Legtöbbet /
+  Nemrég játszott) a pillanatnyi tartalmukkal kerülnek a fájlba.
+- A gyűjteménymenük „Lejátszás/Keverés” pontja (⋮) továbbra is azonnal indít (a beállítás a gombokra vonatkozik).
+
+---
+
+## 8. rész – lejátszásszámok importálása másik lejátszóból · KÉSZ (2026-11-16) · 1.4.0
+
+Egy másik lejátszóból (amely nem exportál, és az adatbázisa zárolt) a lejátszásszámokat és a listákat a
+képernyőről olvastuk ki USB-n, adb-vel – csak olvasva (`tools/scrape_play_counts.py`, `tools/scrape_playlists.py`).
+A kiolvasott adatok (CSV, .m3u8) személyesek, a projekten kívül maradnak.
+
+### Elkészült
+- `data/stats/PlayCountImport.kt` (tiszta Kotlin): `PlayCountCsv` (elválasztó-felismerés, fejléc vagy alapsorrend,
+  idézőjelek, BOM, hossz), `PlayCountMatcher` (cím/fájlnév, előadó, hossz), `PlayCountMerge` (csak növel).
+  `PlayCountImporter` (fájl → párosítás → `setPlayCount`), `ui/settings/PlayCountImportUi.kt`, új sor a
+  Beállítások → Zenetár részben. A listák a meglévő .m3u8-importtal jönnek át (cím szerinti párosítás).
+
+### Tesztek – ténylegesen lefuttatva
+- JVM 151/151 (új: `PlayCountImportTest` 9), műszeres 45/45 `Clean_API_37`-en (új: `PlayCountImportInstrumentedTest`),
+  lint 0 hiba. Valódi telefonon: a kiolvasók több mint ezer soros listán, a párosítás 99%-os volt.
+
+### Tanulságok
+- Telefont vezérlő szkriptből egyszerre csak egy fusson (két példány egymást zavarja), `run_in_background`-dal.
+- A `monkey` indítóparancs bekapcsolhatja az automatikus forgatást: appot `am start`-tal indíts.
+
+### 1.4.1
+- A „Legtöbbet játszott” listának nincs korlátja; a „Hozzáadás a kedvencekhez” minden gyűjtemény menüjében megvan.
+- Tesztek: JVM 152/152, műszeres 45/45, lint 0 hiba.
+
+---
+
+## 9. rész – listák rendezése, új ikon, új név · KÉSZ (2026-11-16) · 1.5.0
+
+- **Listák rendezése** (Listák fül fejléc, rendezés gomb): név / létrehozás ideje / számok száma, csökkenő, és
+  „Különleges listák mindig elöl” (alapból be). Tiszta logika: `data/playlists/PlaylistOrdering.kt`; a
+  `PlaylistSummary` a létrehozás idejét is hozza (`created_at`, séma nem változott). Beállítás: `playlist_sort`,
+  `playlist_sort_descending`, `playlist_special_first`.
+- **Új ikon:** sötét mélyzöld sugaras háttér (`drawable/ic_launcher_background.xml`), rügyzöld hangjegy levélzászlóval
+  és két hanghullámmal (`ic_launcher_foreground.xml`), egyszínű változat a témázott ikonokhoz
+  (`ic_launcher_monochrome.xml`). A rajz a biztonságos 66 dp-s körön belül van (kerek maszkkal ellenőrizve).
+- **Új név:** magyarul **Zengő**, minden más nyelven **Orotund** (`app_name`, widget, súgó). A vágott fájlok mappája
+  `Music/Orotund`. A csomagnév (`io.github.x1wer.szabadzene`) és a forráskód-csomag változatlan, hogy a telepített
+  app adatai megmaradjanak.
+- Tesztek: JVM 155/155 (új: `PlaylistOrderingTest` 3), műszeres 45/45 `Clean_API_37`-en, lint 0 hiba.
+- Verzió 1.5.0 (versionCode 10). GitHub: `X1wer/Orotund`.

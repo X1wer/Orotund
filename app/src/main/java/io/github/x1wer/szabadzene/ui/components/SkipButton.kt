@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,6 +45,9 @@ object SkipButtonTags {
         SkipDirection.BACK -> BACK
         SkipDirection.FORWARD -> FORWARD
     }
+
+    /** A teljes lejátszó további (nem fő értékű) ugrógombjai. */
+    fun extra(direction: SkipDirection, seconds: Int) = "${forDirection(direction)}_$seconds"
 }
 
 @Composable
@@ -116,9 +118,9 @@ fun SkipButton(
 }
 
 /**
- * Tömör, 56 × 56 dp-s ugrógomb a minilejátszó egysoros elrendezéséhez.
- * A másodpercérték a gombon belül olvasható; a mérete nem nő a betűmérettel,
- * ezért ezt az elrendezést csak normál betűméretnél használjuk.
+ * Tömör, 56 × 56 dp-s ugrógomb (minilejátszó, a teljes lejátszó többgombos sora).
+ * A másodpercérték a gombon belül olvasható; a felirat rögzített méretű, így a gomb
+ * nagy betűméretnél sem nő, és a szöveg sem lóg ki belőle.
  */
 @Composable
 fun CompactSkipButton(
@@ -127,6 +129,7 @@ fun CompactSkipButton(
     enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    tag: String = SkipButtonTags.forDirection(direction),
 ) {
     val description = skipDescription(direction, seconds)
     val unavailable = stringResource(R.string.cd_unavailable)
@@ -139,7 +142,7 @@ fun CompactSkipButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier
-            .testTag(SkipButtonTags.forDirection(direction))
+            .testTag(tag)
             .size(SkipButtonMinSize)
             .clearAndSetSemantics {
                 contentDescription = description

@@ -29,8 +29,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/** Az ismétlési mód a felület számára. */
-enum class RepeatSetting { OFF, ALL, ONE }
+/**
+ * Az ismétlési mód a felület számára. [STOP_AFTER_CURRENT]: az aktuális szám végén megáll
+ * (a lejátszóban ilyenkor nincs ismétlés; a módot a beállítás tárolja, a szolgáltatás hajtja végre).
+ */
+enum class RepeatSetting { STOP_AFTER_CURRENT, ONE, OFF, ALL }
 
 /** A lejátszás egyetlen hiteles állapota, ahogy a felület látja. */
 data class PlaybackUiState(
@@ -49,6 +52,11 @@ data class PlaybackUiState(
     val hasNext: Boolean = false,
     val repeat: RepeatSetting = RepeatSetting.OFF,
     val shuffle: Boolean = false,
+    /** A következő szám címe (ismétlés és keverés szerint), ha van. */
+    val nextTitle: String? = null,
+    /** Az aktuális szám helye a lejátszási sorrendben (1-től), 0, ha nincs. */
+    val queuePosition: Int = 0,
+    val queueSize: Int = 0,
 ) {
     val hasMedia: Boolean get() = mediaId != null
     val trackId: Long? get() = mediaId?.toLongOrNull()
@@ -101,7 +109,7 @@ class PlayerConnection(
 
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
-            publish()
+            // Előbb a várólista: a lejátszási állapot ebből számolja a sorszámot.
             if (events.containsAny(
                     Player.EVENT_TIMELINE_CHANGED,
                     Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
@@ -111,6 +119,7 @@ class PlayerConnection(
             ) {
                 publishQueue()
             }
+            publish()
         }
     }
 
@@ -162,8 +171,8 @@ class PlayerConnection(
                 controller = connected
                 connected.addListener(playerListener)
                 _sleepTimer.value = sleepTimerStateFrom(connected.sessionExtras)
-                publish()
                 publishQueue()
+                publish()
                 while (pendingActions.isNotEmpty()) pendingActions.removeFirst().invoke(connected)
                 startPositionUpdates()
             },
@@ -202,6 +211,40 @@ class PlayerConnection(
             c.prepare()
             c.play()
         }
+    }
+
+    /** A lista lejátszása sorrendben, az első számtól (a keverés kikapcsol). */
+    fun playInOrder(tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        val items = tracks.map { it.toMediaItem() }
+        withController { c ->
+            c.shuffleModeEnabled = false
+            c.setMediaItems(items, 0, C.TIME_UNSET)
+            c.prepare()
+            c.play()
+        }
+    }
+
+    /**
+     * A zenetár Lejátszás ([shuffle] = hamis) és Keverés gombja. Ha [keepCurrent] és épp szól zene, a
+     * mostani szám végigszól, utána folytatódik az új szabály szerint; különben azonnal indul. Igaz, ha
+     * a mostani szám megmaradt.
+     */
+    fun playAll(tracks: List<Track>, shuffle: Boolean, keepCurrent: Boolean): Boolean {
+        if (tracks.isEmpty()) return false
+        val c = controller
+        val playing = c != null && c.currentMediaItem != null && c.playWhenReady &&
+            c.playbackState != Player.STATE_ENDED && c.playbackState != Player.STATE_IDLE
+        if (keepCurrent && playing) {
+            val args = Bundle().apply {
+                putLongArray(PlaybackCommands.EXTRA_TRACK_IDS, tracks.map { it.id }.toLongArray())
+                putBoolean(PlaybackCommands.EXTRA_SHUFFLE, shuffle)
+            }
+            c.sendCustomCommand(PlaybackCommands.playKeepCurrent, args)
+            return true
+        }
+        if (shuffle) playShuffled(tracks) else playInOrder(tracks)
+        return false
     }
 
     /** A lista lejátszása kevert sorrendben (a keverés bekapcsol). */
@@ -282,11 +325,15 @@ class PlayerConnection(
 
     fun toggleShuffle() = withController { c -> c.shuffleModeEnabled = !c.shuffleModeEnabled }
 
-    fun cycleRepeat() = withController { c ->
-        c.repeatMode = when (c.repeatMode) {
-            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-            else -> Player.REPEAT_MODE_OFF
+    /**
+     * Ismétlési mód a lejátszóban. A „leállás az aktuális szám végén” módot a beállítás tárolja
+     * (a hívó írja); itt ilyenkor csak az ismétlés kapcsol ki.
+     */
+    fun setRepeat(mode: RepeatSetting) = withController { c ->
+        c.repeatMode = when (mode) {
+            RepeatSetting.ALL -> Player.REPEAT_MODE_ALL
+            RepeatSetting.ONE -> Player.REPEAT_MODE_ONE
+            RepeatSetting.OFF, RepeatSetting.STOP_AFTER_CURRENT -> Player.REPEAT_MODE_OFF
         }
     }
 
@@ -394,6 +441,10 @@ class PlayerConnection(
                 else -> RepeatSetting.OFF
             },
             shuffle = c.shuffleModeEnabled,
+            nextTitle = c.nextMediaItemIndex.takeIf { it != C.INDEX_UNSET && it < c.mediaItemCount }
+                ?.let { c.getMediaItemAt(it).mediaMetadata.title?.toString() },
+            queuePosition = _queue.value.indexOfFirst { it.isCurrent } + 1,
+            queueSize = c.mediaItemCount,
         )
     }
 }

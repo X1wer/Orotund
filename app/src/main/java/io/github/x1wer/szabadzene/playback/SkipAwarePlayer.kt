@@ -10,7 +10,8 @@ import androidx.media3.common.util.UnstableApi
  * A munkamenet ezt a lejátszót látja. A rendszer, a fejhallgató vagy más vezérlő
  * előre/vissza tekerési kérése így ugyanazon a közös ugrási logikán megy át,
  * mint az alkalmazás saját gombjai. A beszúrásokról is szól, hogy keverés közben
- * a „Lejátszás következőként” tényleg a következő legyen.
+ * a „Lejátszás következőként” tényleg a következő legyen. Az „Előző” gomb (felület, értesítés,
+ * fejhallgató, widget) a beállítható küszöb szerint előbb a szám elejére teker ([PreviousLogic]).
  */
 @OptIn(UnstableApi::class)
 class SkipAwarePlayer(
@@ -18,7 +19,24 @@ class SkipAwarePlayer(
     private val onSkip: (SkipDirection) -> Unit,
     private val stepMs: (SkipDirection) -> Long,
     private val onItemsInserted: (index: Int, count: Int, currentIndexBefore: Int) -> Unit = { _, _, _ -> },
+    private val restartThresholdMs: () -> Long = { PreviousLogic.DEFAULT_THRESHOLD_SECONDS * 1000L },
 ) : ForwardingPlayer(player) {
+
+    override fun getMaxSeekToPreviousPosition(): Long = restartThresholdMs()
+
+    override fun seekToPrevious() {
+        val action = PreviousLogic.decide(
+            positionMs = currentPosition,
+            thresholdMs = restartThresholdMs(),
+            hasPrevious = hasPreviousMediaItem(),
+            hasMedia = !currentTimeline.isEmpty && !isPlayingAd,
+        )
+        when (action) {
+            PreviousAction.PREVIOUS_ITEM -> seekToPreviousMediaItem()
+            PreviousAction.RESTART -> seekTo(0L)
+            PreviousAction.NONE -> Unit
+        }
+    }
 
     override fun seekBack() = onSkip(SkipDirection.BACK)
 

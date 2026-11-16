@@ -16,6 +16,7 @@ import io.github.x1wer.szabadzene.data.settings.AppearanceSettings
 import io.github.x1wer.szabadzene.data.settings.ThemeMode
 import io.github.x1wer.szabadzene.ui.AppRoot
 import io.github.x1wer.szabadzene.ui.LocalAppContainer
+import io.github.x1wer.szabadzene.ui.theme.ProvideUiScale
 import io.github.x1wer.szabadzene.ui.theme.SzabadZeneTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -50,7 +51,9 @@ class MainActivity : AppCompatActivity() {
             }
             CompositionLocalProvider(LocalAppContainer provides container) {
                 SzabadZeneTheme(darkTheme = dark, dynamicColor = appearance.dynamicColor, accent = appearance.accent) {
-                    AppRoot(openPlayerRequests = openPlayerRequests)
+                    ProvideUiScale(appearance.textScalePercent, appearance.iconScalePercent) {
+                        AppRoot(openPlayerRequests = openPlayerRequests)
+                    }
                 }
             }
         }

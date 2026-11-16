@@ -17,6 +17,13 @@ object PlaybackCommands {
     /** Fájlmódosítás (címke, borító) után: a megadott számok újratöltése a lejátszóban. */
     const val ACTION_RELOAD_TRACKS = "io.github.x1wer.szabadzene.RELOAD_TRACKS"
 
+    /**
+     * A zenetár Lejátszás/Keverés gombja „a mostani szám végigszól” módban: a várólista a megadott
+     * számokra cserélődik úgy, hogy a most szóló szám zavartalanul folytatódik ([EXTRA_TRACK_IDS],
+     * [EXTRA_SHUFFLE]).
+     */
+    const val ACTION_PLAY_KEEP_CURRENT = "io.github.x1wer.szabadzene.PLAY_KEEP_CURRENT"
+
     /** A szolgáltatás küldi, ha egy szám nem játszható le. */
     const val EVENT_PLAYBACK_ERROR = "io.github.x1wer.szabadzene.EVENT_PLAYBACK_ERROR"
 
@@ -31,6 +38,7 @@ object PlaybackCommands {
     const val EXTRA_DURATION_MS = "duration_ms"
     const val EXTRA_END_OF_TRACK = "end_of_track"
     const val EXTRA_TRACK_IDS = "track_ids"
+    const val EXTRA_SHUFFLE = "shuffle"
 
     /** A munkamenet-extrák kulcsai: az időzítő állapota (a felület ebből számolja a hátralévő időt). */
     const val SESSION_SLEEP_MODE = "sleep_mode"
@@ -44,6 +52,7 @@ object PlaybackCommands {
     val sleepTimerSet = SessionCommand(ACTION_SLEEP_TIMER_SET, Bundle.EMPTY)
     val sleepTimerCancel = SessionCommand(ACTION_SLEEP_TIMER_CANCEL, Bundle.EMPTY)
     val reloadTracks = SessionCommand(ACTION_RELOAD_TRACKS, Bundle.EMPTY)
+    val playKeepCurrent = SessionCommand(ACTION_PLAY_KEEP_CURRENT, Bundle.EMPTY)
     val skipForward = SessionCommand(ACTION_SKIP_FORWARD, Bundle.EMPTY)
     val playbackError = SessionCommand(EVENT_PLAYBACK_ERROR, Bundle.EMPTY)
 }

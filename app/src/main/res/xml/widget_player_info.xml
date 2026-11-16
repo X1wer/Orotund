@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  A tartalom (borító, gombsor, két sor szöveg) kb. 88 dp magas: egy kezdőképernyő-sorba belefér. A minHeight
+  szándékosan 40 dp, mert Android 12 előtt a launcher ebből számolja a sorok számát (70·n − 30 dp), és 88 dp-re
+  már 2 sort adna; Android 12-től a targetCell* érvényes. 250 dp-nél keskenyebben nem fér el.
+-->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_description"
     android:initialLayout="@layout/widget_player"
     android:minWidth="250dp"
     android:minHeight="40dp"
-    android:minResizeWidth="180dp"
+    android:minResizeWidth="250dp"
     android:minResizeHeight="40dp"
     android:previewLayout="@layout/widget_player"
     android:resizeMode="horizontal|vertical"

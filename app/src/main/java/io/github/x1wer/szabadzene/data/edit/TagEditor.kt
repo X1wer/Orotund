@@ -16,7 +16,10 @@ import java.io.File
 import java.util.logging.Level
 import java.util.logging.Logger
 
-/** A szerkeszthető címkék. Üres szöveg = a mező törlése. */
+/**
+ * A szerkeszthető címkék. Üres szöveg = a mező törlése. A dalszöveg ([lyrics]) null értéke azt
+ * jelenti, hogy a mentés nem nyúl hozzá (a címkeszerkesztő így menti a többi mezőt).
+ */
 data class TagValues(
     val title: String = "",
     val artist: String = "",
@@ -25,6 +28,7 @@ data class TagValues(
     val genre: String = "",
     val year: String = "",
     val trackNumber: String = "",
+    val lyrics: String? = null,
 ) {
     /** Szóközök levágása, hogy az összehasonlítás és a mentés ugyanazt lássa. */
     fun normalized(): TagValues = TagValues(
@@ -35,7 +39,14 @@ data class TagValues(
         genre = genre.trim(),
         year = year.trim(),
         trackNumber = trackNumber.trim(),
+        lyrics = lyrics?.let(::normalizeLyrics),
     )
+
+    companion object {
+        /** Egységes sorvége, a sorok végéről és a szöveg két végéről a felesleges szóköz le. */
+        fun normalizeLyrics(text: String): String =
+            text.lines().joinToString("\n") { it.trimEnd() }.trim()
+    }
 }
 
 /** Mi történjen a borítóval mentéskor. */
@@ -126,6 +137,7 @@ object TagEditor {
                 genre = tag.first(FieldKey.GENRE),
                 year = tag.first(FieldKey.YEAR),
                 trackNumber = tag.first(FieldKey.TRACK),
+                lyrics = TagValues.normalizeLyrics(tag.first(FieldKey.LYRICS)),
             )
         }
         val cover = tag?.firstArtwork?.binaryData?.takeIf { it.isNotEmpty() }
@@ -149,6 +161,7 @@ object TagEditor {
             tag.put(FieldKey.GENRE, normalized.genre)
             tag.put(FieldKey.YEAR, normalized.year)
             tag.put(FieldKey.TRACK, normalized.trackNumber)
+            normalized.lyrics?.let { tag.put(FieldKey.LYRICS, it) }
             when (cover) {
                 CoverChange.Keep -> Unit
                 CoverChange.Remove -> tag.deleteArtworkField()
@@ -196,7 +209,8 @@ object TagEditor {
             got.albumArtist == want.albumArtist &&
             got.genre == want.genre &&
             sameNumber(got.trackNumber, want.trackNumber) &&
-            sameYear(got.year, want.year)
+            sameYear(got.year, want.year) &&
+            (want.lyrics == null || TagValues.normalizeLyrics(got.lyrics.orEmpty()) == want.lyrics)
         val coverOk = when (cover) {
             CoverChange.Keep -> true
             CoverChange.Remove -> snapshot.cover == null

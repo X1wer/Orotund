@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 interface PlaylistDao {
     @Query(
         """
-        SELECT p.id AS id, p.name AS name,
+        SELECT p.id AS id, p.name AS name, p.created_at AS created_at,
                (SELECT COUNT(*) FROM playlist_entries e WHERE e.playlist_id = p.id) AS entry_count
         FROM playlists p
         ORDER BY p.name COLLATE NOCASE
@@ -142,4 +142,49 @@ interface QueueDao {
         insertItems(trackIds.mapIndexed { index, id -> QueueItemEntity(index, id) })
         saveState(state)
     }
+}
+
+@Dao
+interface PlayStatsDao {
+    @Query("SELECT * FROM play_stats")
+    fun observeAll(): Flow<List<PlayStatsEntity>>
+
+    @Query("SELECT * FROM play_stats WHERE track_id = :trackId")
+    suspend fun get(trackId: Long): PlayStatsEntity?
+
+    /** -1-et ad vissza, ha a szám már szerepel (ilyenkor frissíteni kell). */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIgnore(stats: PlayStatsEntity): Long
+
+    @Query("UPDATE play_stats SET play_count = play_count + 1, last_played_at = :at WHERE track_id = :trackId")
+    suspend fun increment(trackId: Long, at: Long)
+
+    @Query("UPDATE play_stats SET play_count = :count WHERE track_id = :trackId")
+    suspend fun updateCount(trackId: Long, count: Int)
+
+    /** Egy beszámított lejátszás: a számláló nő, és ez lesz az utolsó lejátszás ideje. */
+    @Transaction
+    suspend fun recordPlay(trackId: Long, at: Long) {
+        if (insertIgnore(PlayStatsEntity(trackId, playCount = 1, lastPlayedAt = at)) == -1L) increment(trackId, at)
+    }
+
+    /** A számláló kézi beállítása; az utolsó lejátszás ideje nem változik. */
+    @Transaction
+    suspend fun setCount(trackId: Long, count: Int) {
+        val value = count.coerceAtLeast(0)
+        if (insertIgnore(PlayStatsEntity(trackId, playCount = value, lastPlayedAt = null)) == -1L) {
+            updateCount(trackId, value)
+        }
+    }
+
+    /** A „Nemrég játszott” lista ürítése (a számlálók megmaradnak). */
+    @Query("UPDATE play_stats SET last_played_at = NULL")
+    suspend fun clearHistory()
+
+    /** Minden számláló nullázása (az előzmények megmaradnak). */
+    @Query("UPDATE play_stats SET play_count = 0")
+    suspend fun resetCounts()
+
+    @Query("DELETE FROM play_stats WHERE track_id = :trackId")
+    suspend fun delete(trackId: Long)
 }

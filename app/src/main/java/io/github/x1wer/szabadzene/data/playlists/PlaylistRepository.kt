@@ -25,6 +25,7 @@ class PlaylistRepository(
 ) {
     private val playlistDao = database.playlistDao()
     private val favoriteDao = database.favoriteDao()
+    private val playStatsDao = database.playStatsDao()
 
     val playlists: Flow<List<PlaylistSummary>> = playlistDao.observePlaylists()
 
@@ -68,9 +69,10 @@ class PlaylistRepository(
 
     suspend fun removeFavorite(trackId: Long) = favoriteDao.remove(trackId)
 
-    /** A fájl törlése után: a szám kikerül minden listából és a kedvencek közül. */
+    /** A fájl törlése után: a szám kikerül minden listából, a kedvencek közül és a statisztikából. */
     suspend fun forgetTrack(trackId: Long) {
         playlistDao.removeTrackEverywhere(trackId)
         favoriteDao.remove(trackId)
+        playStatsDao.delete(trackId)
     }
 }

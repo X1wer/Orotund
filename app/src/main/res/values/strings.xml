@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Default (English) strings. The Hungarian translation lives in values-hu. -->
 <resources>
-    <string name="app_name" translatable="false">SzabadZene</string>
+    <string name="app_name">Orotund</string>
 
     <!-- Navigation -->
     <string name="nav_library">Library</string>
@@ -15,9 +15,9 @@
     </plurals>
     <string name="library_scanning">Looking for your music…</string>
     <string name="library_empty_title">No music found</string>
-    <string name="library_empty_body">Copy audio files to the Music folder of your phone. SzabadZene finds them automatically.</string>
+    <string name="library_empty_body">Copy audio files to the Music folder of your phone. Orotund finds them automatically.</string>
     <string name="permission_title">Access to your music</string>
-    <string name="permission_body">SzabadZene plays the music stored on this phone. To list your songs it needs permission to read audio files. Nothing leaves your device.</string>
+    <string name="permission_body">Orotund plays the music stored on this phone. To list your songs it needs permission to read audio files. Nothing leaves your device.</string>
     <string name="permission_denied_body">Access to audio files was denied. You can allow it at any time in the system settings, under Permissions.</string>
     <string name="permission_grant">Allow access</string>
     <string name="permission_open_settings">Open system settings</string>
@@ -49,9 +49,6 @@
     <string name="cd_next">Next track</string>
     <string name="cd_shuffle_on">Shuffle: on</string>
     <string name="cd_shuffle_off">Shuffle: off</string>
-    <string name="cd_repeat_off">Repeat: off</string>
-    <string name="cd_repeat_all">Repeat: all</string>
-    <string name="cd_repeat_one">Repeat: one track</string>
     <string name="cd_minimize">Minimize player</string>
     <string name="cd_more_actions">More actions</string>
     <string name="cd_open_player">Open player</string>
@@ -149,7 +146,7 @@
     <string name="playlist_rename">Rename</string>
     <string name="playlist_delete_title">Delete playlist?</string>
     <string name="playlist_delete_message">The playlist “%1$s” will be deleted. The music files stay on your phone.</string>
-    <string name="playlists_empty">You have no playlists yet. Create one with the button above, or from a track’s menu.</string>
+    <string name="playlists_empty">You have no playlists yet. Create one with the button above or from a track’s menu, or import playlist files (.m3u, .pls) with the import button.</string>
     <string name="playlist_empty">This playlist is empty. Add tracks from a track’s menu.</string>
     <string name="favorites_empty">No favorites yet. Use the heart in the player or “Add to favorites” in a track’s menu.</string>
     <plurals name="add_to_playlist_title">
@@ -210,11 +207,11 @@
     <string name="settings_help_desc">How to use the main features</string>
     <string name="settings_licenses">Licenses</string>
     <string name="settings_licenses_desc">Open-source components used by the app</string>
-    <string name="licenses_intro">SzabadZene is free software under the GPL-3.0 license. It uses the following open-source components:</string>
+    <string name="licenses_intro">Orotund is free software under the GPL-3.0 license. It uses the following open-source components:</string>
 
     <!-- Help -->
     <string name="help_menu_title">Track menu</string>
-    <string name="help_menu_body">The ⋮ area on the right of every track opens the track’s actions. The whole area is tappable and never starts playback.</string>
+    <string name="help_menu_body">The round ••• button on the right of every track opens the track’s actions. The whole area around it is tappable and never starts playback. Swipe left or right to move between the bottom tabs. In the Library, the title bar hides while you scroll down and comes back at the top of the list; the ⋮ menu there sets which tabs are shown. Text and icon size can be changed in Settings → Appearance.</string>
     <string name="help_skip_title">Skip buttons</string>
     <string name="help_skip_body">The −/+ buttons below the progress bar jump within the current track. They are always visible, also in the mini player. Set the step for each direction in Settings.</string>
     <string name="help_queue_title">Queue</string>
@@ -320,7 +317,7 @@
     <string name="error_trim">Trimming failed. The original file is unchanged.</string>
     <string name="error_preview">This file cannot be previewed.</string>
     <string name="ringtone_permission_title">Allow changing the ringtone</string>
-    <string name="ringtone_permission_body">Android only lets apps change the ringtone if you allow “Modify system settings” for them. On the next screen – Android’s own settings page – turn it on for SzabadZene, then go back.</string>
+    <string name="ringtone_permission_body">Android only lets apps change the ringtone if you allow “Modify system settings” for them. On the next screen – Android’s own settings page – turn it on for Orotund, then go back.</string>
     <string name="ringtone_open_settings">Open setting</string>
     <string name="ringtone_denied">The ringtone was not changed: permission to modify system settings was not given.</string>
     <string name="toast_ringtone_set">Ringtone set: %1$s</string>
@@ -333,10 +330,177 @@ To only take it off a playlist, use “Remove from this playlist” instead.</st
     <string name="toast_file_deleted">Deleted from the phone: %1$s</string>
     <string name="error_delete">The file was not deleted.</string>
     <string name="error_permission_storage">This needs permission to modify storage.</string>
-    <string name="widget_label">SzabadZene player</string>
-    <string name="widget_description">Current track with play/pause, previous and next</string>
+    <string name="widget_label">Orotund player</string>
+    <string name="widget_description">Cover, playback and ± seconds buttons, the current and the next song</string>
     <string name="help_tools_title">Sound and file tools</string>
-    <string name="help_tools_body">The equalizer and the sleep timer are in the player and in Settings. From a track’s menu you can edit its tags and cover, cut a part into a new file (Music/SzabadZene), set it as ringtone, or delete the file from the phone – deleting always asks first and is separate from removing it from a playlist.</string>
+    <string name="help_tools_body">The equalizer and the sleep timer are in the player and in Settings. From a track’s menu you can edit its tags and cover, cut a part into a new file (Music/Orotund), set it as ringtone, or delete the file from the phone – deleting always asks first and is separate from removing it from a playlist.</string>
     <string name="help_widget_title">Home screen widget</string>
-    <string name="help_widget_body">Add the SzabadZene widget from your launcher’s widget list to control playback from the home screen.</string>
+    <string name="help_widget_body">Add the Orotund widget from your launcher’s widget list. It shows the cover, the playback buttons with the ± seconds skip buttons on both ends, the current song and, below it, the next one.</string>
+
+    <!-- 5. rész: lejátszó-bővítések, statisztika, dalszöveg -->
+    <string name="cd_skip_settings">Skip button settings</string>
+    <string name="repeat_mode_stop">stop after current song</string>
+    <string name="repeat_mode_one">repeat one song</string>
+    <string name="repeat_mode_off">play until the queue ends</string>
+    <string name="repeat_mode_all">repeat the queue</string>
+    <string name="cd_repeat_mode">Repeat and stop: %1$s</string>
+    <string name="cd_speed">Playback speed: %1$s</string>
+    <string name="cd_volume">Volume</string>
+    <string name="cd_queue_position">Queue, song %1$d of %2$d</string>
+    <string name="player_tab_song">Song</string>
+    <string name="player_tab_lyrics">Lyrics</string>
+    <string name="next_up">» %1$s</string>
+    <string name="repeat_dialog_title">Repeat and stop</string>
+    <string name="repeat_desc_stop">Stop playback when the current song ends</string>
+    <string name="repeat_desc_one">Play one song repeatedly</string>
+    <string name="repeat_desc_off">Play the next song automatically until the queue ends</string>
+    <string name="repeat_desc_all">Play the next song automatically and repeat the queue</string>
+    <string name="speed_title">Playback speed</string>
+    <string name="cd_speed_down">Slower</string>
+    <string name="cd_speed_up">Faster</string>
+    <string name="speed_note">The pitch stays the same. The speed applies to every song until you change it.</string>
+    <string name="speed_reset">Normal (1.0×)</string>
+    <string name="volume_title">Music volume</string>
+    <string name="volume_fixed">This device does not allow changing the volume from apps.</string>
+    <string name="cd_volume_down">Volume down</string>
+    <string name="cd_volume_up">Volume up</string>
+    <string name="skip_settings_title">Skip buttons</string>
+    <string name="skip_extra_title">Extra buttons in the full player</string>
+    <string name="skip_extra_body">Up to two values, in both directions. They appear when there is room; the main buttons above are always shown.</string>
+    <string name="play_count_title">Play count</string>
+    <string name="cd_play_count_down">Decrease</string>
+    <string name="cd_play_count_up">Increase</string>
+    <string name="action_edit_lyrics">Edit lyrics</string>
+    <string name="toast_lyrics_saved">Lyrics saved</string>
+    <string name="lyrics_unsupported">Lyrics cannot be read from this file type.</string>
+    <string name="lyrics_none">This song has no lyrics.</string>
+    <string name="lyrics_add">Add lyrics</string>
+    <string name="lyrics_edit">Edit lyrics</string>
+    <string name="lyrics_editor_title">Lyrics</string>
+    <string name="lyrics_placeholder">Type or paste the lyrics here</string>
+    <string name="lyrics_editor_note">The lyrics are saved into the music file. Timed lyrics in LRC format ([01:23.45] line) are highlighted during playback. Empty text removes the lyrics.</string>
+    <string name="lyrics_import_failed">The file could not be read (text file up to 512 KB).</string>
+    <string name="lyrics_import">From file</string>
+    <string name="search_tracks_hint">Search songs (%1$d)</string>
+    <string name="most_played_title">Most played</string>
+    <string name="recently_played_title">Recently played</string>
+    <string name="most_played_empty">Songs you have listened to will appear here. A play counts after half of the song (at most 4 minutes).</string>
+    <string name="recently_played_empty">Songs you have listened to recently will appear here.</string>
+    <string name="recent_clear">Clear history</string>
+    <string name="recent_clear_message">The Recently played list will be emptied. Play counts stay.</string>
+    <string name="most_played_reset">Reset play counts</string>
+    <string name="most_played_reset_message">Every play count will be set to 0. This cannot be undone.</string>
+    <string name="most_played_reset_confirm">Reset</string>
+    <string name="settings_skip_extra">Skip buttons in the full player</string>
+    <string name="settings_skip_extra_value">%1$s seconds</string>
+    <string name="settings_restart_threshold">Previous button: restart the song after</string>
+    <string name="settings_restart_threshold_value">%1$d seconds (earlier: previous song)</string>
+    <string name="help_player_title">Player</string>
+    <string name="help_player_body">Tap the song at the bottom to open the full player. Swipe the bottom player left or right to change songs. The Previous button first returns to the start of the song; within the first seconds (Settings) it goes to the previous song. The repeat button offers four modes, including stopping at the end of the current song.</string>
+    <string name="help_stats_title">Play counts and lyrics</string>
+    <string name="help_stats_body">A play counts when you have listened to half of the song (at most 4 minutes). You can change the count in the song menu. The Lists tab shows Most played and Recently played automatically. Lyrics stored in the file appear on the Lyrics page of the player, where you can also add or edit them.</string>
+    <plurals name="action_play_count">
+        <item quantity="one">Play count: %1$d</item>
+        <item quantity="other">Play count: %1$d</item>
+    </plurals>
+    <plurals name="play_count_subtitle">
+        <item quantity="one">%1$d play · %2$s</item>
+        <item quantity="other">%1$d plays · %2$s</item>
+    </plurals>
+
+    <!-- 6. rész (1.2.0): kijelölés, méretek, listaimport -->
+    <string name="action_select">Select tracks</string>
+    <string name="cd_close_selection">Exit selection</string>
+    <string name="action_select_all">Select all</string>
+    <string name="action_clear_selection">Clear selection</string>
+    <string name="action_more">More actions</string>
+    <plurals name="selection_count">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+    <plurals name="toast_tracks_added_to_favorites">
+        <item quantity="one">%d track added to favorites</item>
+        <item quantity="other">%d tracks added to favorites</item>
+    </plurals>
+    <plurals name="delete_files_title">
+        <item quantity="one">Delete %d file from the phone?</item>
+        <item quantity="other">Delete %d files from the phone?</item>
+    </plurals>
+    <plurals name="delete_files_body">
+        <item quantity="one">%1$d file (%2$s) will be permanently deleted from the phone’s storage, and removed from all playlists, favorites and the queue. This cannot be undone.</item>
+        <item quantity="other">%1$d files (%2$s in total) will be permanently deleted from the phone’s storage, and removed from all playlists, favorites and the queue. This cannot be undone.</item>
+    </plurals>
+    <string name="delete_files_confirm">Delete files</string>
+    <plurals name="toast_files_deleted">
+        <item quantity="one">%d file deleted from the phone</item>
+        <item quantity="other">%d files deleted from the phone</item>
+    </plurals>
+    <string name="error_delete_partial">Not every file was deleted (deleted: %1$d / %2$d).</string>
+    <string name="settings_text_size">Text size</string>
+    <string name="settings_icon_size">Icon size</string>
+    <string name="settings_scale_value">%1$s · %2$d%%</string>
+    <string name="scale_small">Small</string>
+    <string name="scale_normal">Normal</string>
+    <string name="scale_large">Large</string>
+    <string name="scale_larger">Larger</string>
+    <string name="scale_largest">Largest</string>
+    <string name="playlist_import">Import playlists</string>
+    <string name="playlist_import_files">Choose playlist files (.m3u, .m3u8, .pls)</string>
+    <string name="playlist_import_folder">Choose a folder with playlists</string>
+    <string name="playlist_import_running">Importing playlists…</string>
+    <string name="playlist_import_done">Import finished</string>
+    <string name="playlist_import_failed">The playlists could not be imported.</string>
+    <string name="playlist_import_none_found">No playlist files (.m3u, .m3u8, .pls) were found.</string>
+    <string name="playlist_import_line">%1$s – found: %2$d / %3$d</string>
+    <string name="playlist_import_line_no_match">%1$s – none of its tracks are in the library, not created</string>
+    <string name="playlist_import_line_unreadable">%1$s – could not be read</string>
+    <string name="playlist_import_line_not_playlist">%1$s – not a playlist file</string>
+    <string name="playlist_import_missing_hint">Tracks that are not in the library (for example on another device or in a hidden folder) are left out.</string>
+    <string name="action_save_as_playlist">Save as new playlist</string>
+    <string name="toast_playlist_created">Playlist created: %1$s</string>
+    <string name="help_select_title">Selecting several tracks</string>
+    <string name="help_select_body">On the Tracks tab, the checklist button at the top (or a long press on a track) turns on selection. Tap tracks to select them, then use Play or the ⋮ menu to handle them together: play next, add to the queue or a playlist, add to favorites, share or delete. Back or ✕ ends the selection. The Play and Shuffle icons next to the search box play all tracks in the current order or shuffled; what they do while music is already playing can be set in Settings → Playback.</string>
+    <string name="help_import_title">Importing playlists</string>
+    <string name="help_import_body">On the Playlists tab, the import button reads .m3u, .m3u8 and .pls playlist files: choose files, or a whole folder (with its subfolders). Each file becomes a playlist with the tracks found in the library, and a summary shows how many were found. The export button saves the playlists you select as .m3u8 files into a folder you choose. Albums, artists and folders can also be saved as a new playlist from their menus.</string>
+
+    <!-- 1.3.0: zenetár fülei, Lejátszás/Keverés viselkedés, widget, listaexport -->
+    <string name="settings_library_tabs">Library tabs</string>
+    <string name="library_tabs_hint">Choose which tabs appear in the Library. If only one is left, the tab bar is hidden.</string>
+    <string name="settings_play_buttons">Play and Shuffle while music is playing</string>
+    <string name="play_buttons_restart">Start the new order right away</string>
+    <string name="play_buttons_after_current">Let the current song finish, then continue in the new order</string>
+    <string name="toast_order_after_current">After this song, playback continues in order</string>
+    <string name="toast_shuffle_after_current">After this song, playback continues shuffled</string>
+    <string name="widget_skip_default" translatable="false">10</string>
+    <string name="widget_next">Next: %1$s</string>
+    <string name="playlist_export">Export playlists</string>
+    <string name="playlist_export_hint">Select the playlists to save as .m3u8 files. Next, choose the folder.</string>
+    <string name="playlist_export_overwrite">Overwrite files with the same name</string>
+    <string name="playlist_export_choose_folder">Choose folder</string>
+    <string name="playlist_export_running">Saving playlists…</string>
+    <string name="playlist_export_done">Export finished</string>
+    <string name="playlist_export_folder">Folder: %1$s</string>
+    <plurals name="playlist_export_line">
+        <item quantity="one">%1$s: %2$d song</item>
+        <item quantity="other">%1$s: %2$d songs</item>
+    </plurals>
+    <string name="playlist_export_line_failed">%1$s: could not be saved</string>
+    <string name="playlist_export_failed">The folder could not be written.</string>
+
+    <!-- 1.4.0: lejátszásszámok importálása -->
+    <string name="settings_import_counts">Import play counts</string>
+    <string name="settings_import_counts_desc">From a CSV file (count, duration, title, artist); only raises counts</string>
+    <string name="import_counts_running">Reading the file…</string>
+    <string name="import_counts_done">Import finished</string>
+    <string name="import_counts_failed">The file could not be read.</string>
+    <string name="import_counts_empty">The file has no usable rows.</string>
+    <string name="import_counts_rows">Rows read: %1$d</string>
+    <string name="import_counts_updated">Play count raised: %1$d songs</string>
+    <string name="import_counts_unchanged">Already the same or higher: %1$d songs</string>
+    <string name="import_counts_not_matched">Not found: %1$d · ambiguous: %2$d</string>
+    <string name="import_counts_sample">For example:\n%1$s</string>
+    <string name="playlist_sort_name">Name</string>
+    <string name="playlist_sort_created">Date created</string>
+    <string name="playlist_sort_size">Number of songs</string>
+    <string name="playlist_special_first">Special lists always first</string>
 </resources>

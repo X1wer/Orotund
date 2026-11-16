@@ -18,7 +18,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
+import io.github.x1wer.szabadzene.ui.components.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -29,7 +29,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -50,6 +52,10 @@ import io.github.x1wer.szabadzene.data.settings.AppearanceSettings
 import io.github.x1wer.szabadzene.data.settings.EqSettings
 import io.github.x1wer.szabadzene.data.settings.HeadsetSettings
 import io.github.x1wer.szabadzene.data.settings.LibraryFilter
+import io.github.x1wer.szabadzene.data.settings.LibraryLayout
+import io.github.x1wer.szabadzene.data.settings.PlayButtonMode
+import io.github.x1wer.szabadzene.ui.library.LibraryTabsDialog
+import io.github.x1wer.szabadzene.ui.library.sectionsSummary
 import io.github.x1wer.szabadzene.data.settings.SkipSettings
 import io.github.x1wer.szabadzene.data.settings.ThemeMode
 import io.github.x1wer.szabadzene.ui.LocalAppContainer
@@ -57,9 +63,15 @@ import io.github.x1wer.szabadzene.ui.LocalMenuState
 import io.github.x1wer.szabadzene.ui.sound.equalizerSummary
 import io.github.x1wer.szabadzene.ui.sound.sleepTimerSummary
 import io.github.x1wer.szabadzene.ui.components.ChoiceDialog
+import io.github.x1wer.szabadzene.data.settings.PlaybackPrefs
+import io.github.x1wer.szabadzene.playback.PreviousLogic
+import io.github.x1wer.szabadzene.ui.player.speedText
 import kotlinx.coroutines.launch
 
-private enum class SettingsDialog { THEME, ACCENT, LANGUAGE, SKIP_BACK, SKIP_FORWARD, MIN_DURATION, EXCLUDED }
+private enum class SettingsDialog {
+    THEME, ACCENT, TEXT_SIZE, ICON_SIZE, LANGUAGE, SKIP_BACK, SKIP_FORWARD, RESTART_THRESHOLD, PLAY_BUTTONS,
+    MIN_DURATION, EXCLUDED, LIBRARY_TABS,
+}
 
 /** Alkalmazásszintű nyelv: üres = rendszer. A címke „hu”, nem „hu-HU” (lásd ALLAPOT.md). */
 enum class AppLanguage(val tag: String, val label: Int) {
@@ -93,13 +105,17 @@ fun SettingsScreen(
     val sleepTimer by container.player.sleepTimer.collectAsStateWithLifecycle()
     val settings = container.settings
     val skip by settings.skipSettings.collectAsStateWithLifecycle(SkipSettings())
+    val playbackPrefs by settings.playback.collectAsStateWithLifecycle(PlaybackPrefs())
     val appearance by settings.appearance.collectAsStateWithLifecycle(AppearanceSettings())
     val headset by settings.headset.collectAsStateWithLifecycle(HeadsetSettings())
     val filter by settings.libraryFilter.collectAsStateWithLifecycle(LibraryFilter())
+    val libraryLayout by settings.libraryLayout.collectAsStateWithLifecycle(LibraryLayout())
     val scanning by container.library.isScanning.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val resources = LocalResources.current
     var dialog by rememberSaveable { mutableStateOf<SettingsDialog?>(null) }
+    var importCountsRequest by remember { mutableIntStateOf(0) }
+    PlayCountImportHost(importCountsRequest)
     val language = currentAppLanguage()
     val dynamicAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
@@ -133,6 +149,16 @@ fun SettingsScreen(
                 ) { dialog = SettingsDialog.ACCENT }
             }
             ClickableSetting(
+                title = stringResource(R.string.settings_text_size),
+                value = scaleLabel(appearance.textScalePercent),
+                tag = "setting_text_size",
+            ) { dialog = SettingsDialog.TEXT_SIZE }
+            ClickableSetting(
+                title = stringResource(R.string.settings_icon_size),
+                value = scaleLabel(appearance.iconScalePercent),
+                tag = "setting_icon_size",
+            ) { dialog = SettingsDialog.ICON_SIZE }
+            ClickableSetting(
                 title = stringResource(R.string.settings_language),
                 value = stringResource(language.label),
                 tag = "setting_language",
@@ -149,6 +175,26 @@ fun SettingsScreen(
                 value = stringResource(R.string.settings_seconds_value, skip.forwardSeconds),
                 tag = "setting_skip_forward",
             ) { dialog = SettingsDialog.SKIP_FORWARD }
+            ClickableSetting(
+                title = stringResource(R.string.settings_skip_extra),
+                value = skipExtraSummary(skip),
+                tag = "setting_skip_extra",
+            ) { menu.skipSettingsOpen = true }
+            ClickableSetting(
+                title = stringResource(R.string.settings_restart_threshold),
+                value = stringResource(R.string.settings_restart_threshold_value, playbackPrefs.restartThresholdSeconds),
+                tag = "setting_restart_threshold",
+            ) { dialog = SettingsDialog.RESTART_THRESHOLD }
+            ClickableSetting(
+                title = stringResource(R.string.speed_title),
+                value = speedText(playbackPrefs.speed),
+                tag = "setting_speed",
+            ) { menu.speedOpen = true }
+            ClickableSetting(
+                title = stringResource(R.string.settings_play_buttons),
+                value = stringResource(playButtonsLabel(playbackPrefs.playButtons)),
+                tag = "setting_play_buttons",
+            ) { dialog = SettingsDialog.PLAY_BUTTONS }
 
             SectionHeader(stringResource(R.string.settings_section_sound))
             ClickableSetting(
@@ -179,6 +225,11 @@ fun SettingsScreen(
 
             SectionHeader(stringResource(R.string.settings_section_library))
             ClickableSetting(
+                title = stringResource(R.string.settings_library_tabs),
+                value = sectionsSummary(libraryLayout.sections),
+                tag = "setting_library_tabs",
+            ) { dialog = SettingsDialog.LIBRARY_TABS }
+            ClickableSetting(
                 title = stringResource(R.string.settings_rescan),
                 value = stringResource(if (scanning) R.string.library_scanning else R.string.settings_rescan_desc),
                 tag = "setting_rescan",
@@ -193,6 +244,11 @@ fun SettingsScreen(
                 value = minDurationLabel(filter.minDurationSeconds),
                 tag = "setting_min_duration",
             ) { dialog = SettingsDialog.MIN_DURATION }
+            ClickableSetting(
+                title = stringResource(R.string.settings_import_counts),
+                value = stringResource(R.string.settings_import_counts_desc),
+                tag = "setting_import_counts",
+            ) { importCountsRequest++ }
             ClickableSetting(
                 title = stringResource(R.string.settings_excluded_folders),
                 value = if (filter.excludedFolders.isEmpty()) {
@@ -243,6 +299,47 @@ fun SettingsScreen(
             },
             onDismiss = { dialog = null },
         )
+        SettingsDialog.PLAY_BUTTONS -> ChoiceDialog(
+            title = stringResource(R.string.settings_play_buttons),
+            options = PlayButtonMode.entries.toList(),
+            selected = playbackPrefs.playButtons,
+            label = { stringResource(playButtonsLabel(it)) },
+            onSelect = {
+                dialog = null
+                scope.launch { settings.setPlayButtonMode(it) }
+            },
+            onDismiss = { dialog = null },
+        )
+        SettingsDialog.LIBRARY_TABS -> LibraryTabsDialog(
+            current = libraryLayout.sections,
+            onSave = {
+                dialog = null
+                scope.launch { settings.setLibrarySections(it) }
+            },
+            onDismiss = { dialog = null },
+        )
+        SettingsDialog.TEXT_SIZE -> ChoiceDialog(
+            title = stringResource(R.string.settings_text_size),
+            options = AppearanceSettings.ALLOWED_SCALE_PERCENTS,
+            selected = appearance.textScalePercent,
+            label = { scaleLabel(it) },
+            onSelect = {
+                dialog = null
+                scope.launch { settings.setTextScalePercent(it) }
+            },
+            onDismiss = { dialog = null },
+        )
+        SettingsDialog.ICON_SIZE -> ChoiceDialog(
+            title = stringResource(R.string.settings_icon_size),
+            options = AppearanceSettings.ALLOWED_SCALE_PERCENTS,
+            selected = appearance.iconScalePercent,
+            label = { scaleLabel(it) },
+            onSelect = {
+                dialog = null
+                scope.launch { settings.setIconScalePercent(it) }
+            },
+            onDismiss = { dialog = null },
+        )
         SettingsDialog.LANGUAGE -> ChoiceDialog(
             title = stringResource(R.string.settings_language),
             options = AppLanguage.entries.toList(),
@@ -277,6 +374,17 @@ fun SettingsScreen(
             },
             onDismiss = { dialog = null },
         )
+        SettingsDialog.RESTART_THRESHOLD -> ChoiceDialog(
+            title = stringResource(R.string.settings_restart_threshold),
+            options = PreviousLogic.ALLOWED_THRESHOLD_SECONDS,
+            selected = playbackPrefs.restartThresholdSeconds,
+            label = { stringResource(R.string.settings_seconds_value, it) },
+            onSelect = {
+                dialog = null
+                scope.launch { settings.setRestartThresholdSeconds(it) }
+            },
+            onDismiss = { dialog = null },
+        )
         SettingsDialog.MIN_DURATION -> ChoiceDialog(
             title = stringResource(R.string.settings_min_duration),
             options = LibraryFilter.ALLOWED_MIN_DURATIONS,
@@ -295,6 +403,32 @@ fun SettingsScreen(
         )
         null -> Unit
     }
+}
+
+/** A teljes lejátszó ugrógombjai röviden, pl. „−30 −10 −5 / +5 +10 +30”. */
+@Composable
+private fun skipExtraSummary(skip: SkipSettings): String {
+    val back = skip.stepsFor(back = true).sortedDescending().joinToString(" ") { "−$it" }
+    val forward = skip.stepsFor(back = false).joinToString(" ") { "+$it" }
+    return stringResource(R.string.settings_skip_extra_value, "$back / $forward")
+}
+
+/** „Normál · 100%” jellegű felirat a betű- és ikonmérethez. */
+@Composable
+private fun scaleLabel(percent: Int): String {
+    val name = when (percent) {
+        85 -> R.string.scale_small
+        100 -> R.string.scale_normal
+        115 -> R.string.scale_large
+        130 -> R.string.scale_larger
+        else -> R.string.scale_largest
+    }
+    return stringResource(R.string.settings_scale_value, stringResource(name), percent)
+}
+
+private fun playButtonsLabel(mode: PlayButtonMode): Int = when (mode) {
+    PlayButtonMode.RESTART -> R.string.play_buttons_restart
+    PlayButtonMode.AFTER_CURRENT -> R.string.play_buttons_after_current
 }
 
 private fun themeLabel(mode: ThemeMode): Int = when (mode) {
@@ -417,14 +551,22 @@ fun HelpScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
     val sections = listOf(
         R.string.help_menu_title to R.string.help_menu_body,
         R.string.help_skip_title to R.string.help_skip_body,
+        R.string.help_player_title to R.string.help_player_body,
+        R.string.help_select_title to R.string.help_select_body,
+        R.string.help_stats_title to R.string.help_stats_body,
         R.string.help_queue_title to R.string.help_queue_body,
         R.string.help_playlists_title to R.string.help_playlists_body,
+        R.string.help_import_title to R.string.help_import_body,
         R.string.help_folders_title to R.string.help_folders_body,
         R.string.help_headset_title to R.string.help_headset_body,
         R.string.help_tools_title to R.string.help_tools_body,
         R.string.help_widget_title to R.string.help_widget_body,
     )
-    Column(Modifier.fillMaxSize()) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .testTag("help_screen"),
+    ) {
         TopAppBar(
             title = { Text(stringResource(R.string.settings_help)) },
             navigationIcon = {
@@ -457,7 +599,7 @@ fun HelpScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
 @Composable
 fun LicensesScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
     val components = listOf(
-        "SzabadZene" to "GNU General Public License v3.0",
+        "Orotund / Zengő" to "GNU General Public License v3.0",
         "Kotlin, kotlinx.coroutines (JetBrains)" to "Apache License 2.0",
         "AndroidX Core, AppCompat, Activity, Lifecycle (Google)" to "Apache License 2.0",
         "Jetpack Compose, Material 3, Material Icons (Google)" to "Apache License 2.0",

@@ -5,8 +5,12 @@ import android.content.Context
 import io.github.x1wer.szabadzene.data.db.AppDatabase
 import io.github.x1wer.szabadzene.data.edit.TrackFileEditor
 import io.github.x1wer.szabadzene.data.library.LibraryRepository
+import io.github.x1wer.szabadzene.data.playlists.PlaylistExporter
+import io.github.x1wer.szabadzene.data.playlists.PlaylistImporter
 import io.github.x1wer.szabadzene.data.playlists.PlaylistRepository
 import io.github.x1wer.szabadzene.data.settings.SettingsRepository
+import io.github.x1wer.szabadzene.data.stats.PlayCountImporter
+import io.github.x1wer.szabadzene.data.stats.PlayStatsRepository
 import io.github.x1wer.szabadzene.playback.AudioEffectsRegistry
 import io.github.x1wer.szabadzene.playback.PlayerConnection
 import io.github.x1wer.szabadzene.ui.components.ArtworkLoader
@@ -37,6 +41,14 @@ class AppContainer(context: Context) {
         scope = appScope,
     )
     val playlists = PlaylistRepository(database, library)
+
+    /** Listafájlok (.m3u, .m3u8, .pls) importálása. */
+    val playlistImporter = PlaylistImporter(context.applicationContext, library, playlists)
+    val playlistExporter = PlaylistExporter(context.applicationContext)
+
+    /** Lejátszásszámláló és előzmények (Legtöbbet játszott, Nemrég játszott). */
+    val playStats = PlayStatsRepository(database, library)
+    val playCountImporter = PlayCountImporter(context.applicationContext, library, playStats)
     val artwork = ArtworkLoader(context.applicationContext)
     val player = PlayerConnection(context.applicationContext, appScope)
 

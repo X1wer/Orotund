@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.x1wer.szabadzene.data.db.AppDatabase
 import io.github.x1wer.szabadzene.data.db.FavoriteEntity
+import io.github.x1wer.szabadzene.data.db.PlayStatsEntity
 import io.github.x1wer.szabadzene.playback.QueueStore
 import io.github.x1wer.szabadzene.playback.SavedQueue
 import kotlinx.coroutines.flow.first
@@ -115,6 +116,31 @@ class DatabaseTest {
         store.save(shorter)
         assertEquals(shorter, store.load())
     }
+
+    @Test
+    fun playStatsCountManualEditHistoryAndReset() = runBlocking {
+        val dao = db.playStatsDao()
+        dao.recordPlay(1, at = 100)
+        dao.recordPlay(1, at = 200)
+        dao.recordPlay(2, at = 150)
+        assertEquals(PlayStatsEntity(1, 2, 200), dao.get(1))
+
+        // Kézi beállítás: a számláló változik, az utolsó lejátszás nem; új számnál nincs utolsó lejátszás.
+        dao.setCount(1, 10)
+        assertEquals(PlayStatsEntity(1, 10, 200), dao.get(1))
+        dao.setCount(3, 4)
+        assertEquals(PlayStatsEntity(3, 4, null), dao.get(3))
+        dao.setCount(3, -5)
+        assertEquals(0, dao.get(3)?.playCount)
+
+        dao.clearHistory()
+        assertEquals(listOf(null, null, null), dao.observeAll().first().map { it.lastPlayedAt })
+        assertEquals(10, dao.get(1)?.playCount)
+        dao.resetCounts()
+        assertEquals(listOf(0, 0, 0), dao.observeAll().first().map { it.playCount })
+        dao.delete(2)
+        assertNull(dao.get(2))
+    }
 }
 
 /** A tárolt adatbázis 1. verziójából a 2.-ba lépés (új táblák) adatvesztés nélkül. */
@@ -147,6 +173,29 @@ class MigrationTest {
             db.query("SELECT COUNT(*) FROM playlists").use { cursor ->
                 assertTrue(cursor.moveToFirst())
                 assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
+    @Test
+    fun migrate2To3KeepsUserDataAndAddsPlayStats() {
+        helper.createDatabase(TEST_DB, 2).use { db ->
+            db.execSQL("INSERT INTO playlists (id, name, created_at) VALUES (1, 'Kedvenc lista', 5)")
+            db.execSQL("INSERT INTO favorites (track_id, added_at) VALUES (9, 7)")
+        }
+        helper.runMigrationsAndValidate(TEST_DB, 3, true).use { db ->
+            db.query("SELECT name FROM playlists WHERE id = 1").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Kedvenc lista", cursor.getString(0))
+            }
+            db.query("SELECT COUNT(*) FROM favorites").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(1, cursor.getInt(0))
+            }
+            db.execSQL("INSERT INTO play_stats (track_id, play_count, last_played_at) VALUES (9, 3, NULL)")
+            db.query("SELECT play_count FROM play_stats WHERE track_id = 9").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(3, cursor.getInt(0))
             }
         }
     }

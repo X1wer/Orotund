@@ -192,7 +192,7 @@ Választott alapértékek (nem az eredeti alkalmazásról szóló állítások):
 - Átlátható architektúra: a felület, a zenetár, a tartós adatok és a lejátszás felelőssége külön.
 - Hanghatásról, formátumról vagy hardveres funkcióról csak ellenőrzés után szabad állítani, hogy támogatott.
 - A felhasznált összetevők licenceit dokumentálni kell.
-- **Projekt helye:** `C:\Users\Xiwer\Documents\Claude\outputs\SzabadZene` – csak ASCII karakterekből álló útvonal (ékezetes útvonalnál az Android-build Windowson figyelmeztet vagy elhasal). Más alkalmazás projektjét nem szabad módosítani vagy felülírni.
+- **Projekt helye:** például `C:\Projektek\SzabadZene` – csak ASCII karakterekből álló útvonal (ékezetes útvonalnál az Android-build Windowson figyelmeztet vagy elhasal). Más alkalmazás projektjét nem szabad módosítani vagy felülírni.
 - Helyi git tároló; távoli tárolóba feltöltés (push) és közzététel csak kifejezett kérésre.
 
 Hivatalos kiinduló dokumentáció:
@@ -241,3 +241,143 @@ A munka végén:
 Ha a környezet nem enged fordítani vagy emulátort futtatni, pontosan meg kell nevezni az akadályt; ilyenkor nem szabad kész APK-t vagy sikeres tesztelést állítani. Az elvégezhető munkát ettől még be kell fejezni.
 
 **A legfontosabb eredmény:** kényelmesen megnyomható számonkénti menü, állandóan látható másodperces ugrógombok, megbízható offline és háttérlejátszás – ezek az elkészült alkalmazásban valóban működjenek.
+
+---
+
+## 9. Bővítések (1.1.0) – a felhasználó mintaképei alapján (2026-11-16)
+
+A felhasználó egy másik lejátszó képernyőképeit adta mintának. A funkciókat vettük át, a megjelenést
+nem másoltuk. Az 1. fejezet két kiemelt elvárása változatlanul érvényes.
+
+**Zenetár**
+- A Számok fül tetején mindig látható keresőmező („Dalok keresése (N)”), mellette a rendezés gombja.
+- Alapértelmezett rendezés: a hozzáadás dátuma, a legújabb felül, a legrégebbi alul. Mezőváltáskor a mező
+  természetes iránya érvényes (dátumnál a legújabb elöl, a többinél növekvő).
+
+**Minilejátszó (alul)**
+- Borító, cím, előadó, a következő szám („» cím”), a várólista sorszáma („#22/48”; koppintásra a várólista).
+- Vezérlők: −N mp, előző szám, lejátszás/szünet, következő szám, +N mp. A két ugrógomb továbbra is kötelező.
+- Vízszintes húzás a törzsön: balra a következő, jobbra az előző szám. Koppintás: teljes lejátszó.
+
+**„Előző” gomb**
+- Ha a számból több telt el a küszöbnél, a szám elejére teker; különben az előző számra lép (ha nincs előző,
+  az elejére). Küszöb: 3, 5, 10, 15 vagy 30 mp, alapból 10 mp (korábban a Media3 rögzített 3 mp-e).
+  Minden vezérlőre érvényes: app, értesítés, zárolási képernyő, fejhallgató, widget.
+
+**Teljes lejátszó**
+- Fejléc: kicsinyítés, várólista a sorszámmal, Dal / Dalszöveg nézet, a szám menüje.
+- Cím, előadó, album, „» következő szám”.
+- Műveletsor: lejátszási sebesség (0,5–2,0×, 0,05-ös lépés, a hangmagasság nem változik, a beállítás
+  megmarad), hangszínszabályzó, kedvenc, listához adás, elalvásidőzítő, hangerő (a rendszer médiahangereje).
+- Közvetlenül az időcsúszka alatt az ugrógombok: a fő értékek mellett irányonként legfeljebb két további
+  érték (alapból −30 −10 −5 | +5 +10 +30), mindegyik legalább 56 × 56 dp. Helyhiánynál előbb a beállítás
+  fogaskereke, majd a további gombok maradnak el; a fő pár soha. A fogaskerék az ugrógombok beállítását nyitja.
+- Vezérlősor: véletlen sorrend, előző, lejátszás/szünet, következő, ismétlés.
+- Az ismétlés gombja módválasztót nyit: leállás az aktuális dal végén / egy dal ismétlése / lejátszás a sor
+  végéig / a sor ismétlése. Leállás módban a szám végén szünet, és a lejátszó a következő szám elejére áll.
+
+**Lejátszásszám és automatikus listák**
+- Minden számnál tárolódik, hányszor hallgatták meg, és mikor utoljára. Egy lejátszás akkor számít, ha a
+  ténylegesen lejátszott idő (szünet és előretekerés nélkül) eléri a szám felét, de legfeljebb 4 percet
+  (ismeretlen hossznál 30 mp-et). Lejátszásonként egyszer számít; az ismétlés, illetve egy már beszámított
+  lejátszás után az elejére tekerés új lejátszás.
+- A lejátszásszám a számmenüben kézzel átírható (0 vagy nagyobb egész).
+- A Listák fülön: Kedvencek, Legtöbbet játszott (1.4.1-től korlát nélkül, lejátszásszám szerint, egyenlőségnél a
+  frissebb előbb), Nemrég játszott (legfeljebb 100, az utolsó lejátszás szerint). Lejátszás és keverés; a lista
+  menüjéből megerősítés után az előzmények törölhetők, illetve a számlálók nullázhatók.
+- A fájl törlésekor a szám statisztikája is törlődik.
+
+**Dalszöveg**
+- A fájlba ágyazott dalszöveg (MP3: USLT, M4A: ©lyr, FLAC/OGG: LYRICS) a teljes lejátszó Dalszöveg nézetében.
+  Időzített (LRC) szövegnél az aktuális sor kiemelve, a nézet követi (kézi görgetés után 4 mp-ig nem),
+  egy sorra koppintva oda teker.
+- Hozzáadás és szerkesztés kézzel vagy .lrc/.txt fájlból (UTF-8, ennek hiányában Windows-1250); mentés a
+  címkeírás ellenőrzött folyamatával és a rendszer írási engedélyével. Üres szöveg mentése törli a dalszöveget.
+
+## 10. Bővítések (1.2.0) – kezelhetőség, kijelölés, listaimport (2026-11-16)
+
+Az 1. fejezet két kiemelt elvárása változatlanul érvényes; a számsor menüterülete szélesebb lett (72 dp),
+a legalább 64 × 64 dp-s minimum megmaradt.
+
+**Betű- és ikonméret** (Beállítások → Megjelenés)
+- Betűméret: 85 / 100 / 115 / 130 / 150%, a rendszer betűméretéhez képest; a kettő szorzata legfeljebb 2,0×
+  (a tesztelt tartomány). 100%-nál a rendszer saját (Android 14-től nemlineáris) skálázása marad.
+- Ikonméret: ugyanezek a fokozatok; minden ikonra hat (az alsó navigáció ikonjai legfeljebb 1,3×-osak).
+
+**Zenetár, Számok fül**
+- A keresőmező alatt „Lejátszás” (az összes szám a látható sorrendben) és „Keverés” (keverve) gomb.
+- Kijelölés gomb a keresőmező mellett (vagy hosszú nyomás egy számon): kijelölő mód jelölőnégyzetekkel.
+  Felső sáv: bezárás, darabszám, összes kijelölése / kijelölés törlése, lejátszás, további műveletek. A további
+  műveletek: lejátszás, keverés, lejátszás következőként, várólistához, listához adás, kedvencekhez, megosztás,
+  törlés a telefonról (egyszerre, egy rendszer-jóváhagyással). A Vissza gomb kilép a kijelölésből.
+- A menüterület kijelölő módban is csak a menüt nyitja.
+
+**Számsorok**
+- Vékony elválasztó vonal minden szám- és gyűjteménysor alatt.
+- A menüterület 72 dp széles; ikonja egy tónusos körben lévő „•••” (az éppen szóló számnál kiemelt színnel).
+
+**Fülek**
+- Az alsó fő fülek (Zenetár, Listák, Mappák, Beállítások) között oldalra húzással is lehet váltani.
+- Minden fül megtartja a saját képernyőjét (pl. megnyitott album) váltáskor; az aktív fülre koppintva a fül
+  kezdőképernyője jön. A Vissza gomb előbb a fülön belül lép vissza, a fül gyökerén az első fülre visz.
+
+**Listák importálása** (Listák fül, fejléc)
+- .m3u, .m3u8 (kiterjesztett is) és .pls fájlok a rendszer fájlválasztójával: egy vagy több fájl, vagy egy
+  mappa (almappákkal, 3 szint mélységig, legfeljebb 300 fájl). Engedély és internet nem kell.
+- Párosítás a zenetárral: teljes útvonal; a listafájl mappájához képesti útvonal; más gépen készült listánál az
+  útvonal vége (csak ha egyértelmű, és ha a fájl megadja, a hossz is egyezik); végül az „Előadó - Cím”/„Cím”.
+  Kódolás: UTF-8, különben windows-1250. Azonos nevű listánál „Név (2)”.
+- Összesítő: listánként a megtalált / összes bejegyzés; a nem talált számok kimaradnak; találat nélkül nem jön
+  létre lista.
+- Album, előadó, műfaj és mappa menüjében: „Mentés új listaként”.
+
+## 11. Bővítések (1.3.0) – zenetár fejléc és fülek, gombviselkedés, widget, listaexport (2026-11-16)
+
+Az 1. fejezet két kiemelt elvárása változatlanul érvényes (a menüterület és az ugrógombok nem változtak).
+
+**Zenetár**
+- A „Zenetár” fejléc (cím, darabszám, gombok) lefelé görgetve eltűnik, és csak akkor jön vissza, ha a lista
+  tetejére görgetünk; fülváltáskor újra látszik. A fülsáv a helyén marad.
+- A belső fülek (Számok, Albumok, Előadók, Műfajok) közül választható, melyek látszanak (a fejléc ⋮ menüjéből
+  és a Beállítások → Zenetár részből). Legalább egy fül marad; ha csak egy, a fülsáv eltűnik.
+- A „Lejátszás” és a „Keverés” csak ikon (legalább 48 × 48 dp), a keresőmező mellett. A kijelölés és a
+  rendezés gombja a fejlécbe került.
+
+**Lejátszás/Keverés gomb viselkedése** (Beállítások → Lejátszás)
+- Ha nem szól zene: azonnal indul (sorrendben, illetve keverve).
+- Ha már szól zene, választható:
+  - „Azonnal az új sorrend indul” (alapértelmezés): a lista az első, illetve egy véletlen számmal indul;
+  - „A mostani szám végigszól, utána jön az új sorrend”: a szám nem szakad meg; utána sorrendben a lista
+    következő száma (ha a szám nincs a listában, a lista eleje), keverésnél a többi szám véletlen sorrendben.
+    Rövid üzenet jelzi, mi következik.
+- A beállítás az albumok és listák Lejátszás/Keverés gombjára is vonatkozik. A Lejátszás gomb a keverést
+  kikapcsolja (sorrendben játszik).
+
+**Kezdőképernyős widget**
+- Balra a borító; tőle jobbra felül a gombsor: a két szélén ugrás −N / +N másodperccel (a beállított
+  értékkel, a számmal az ikonban), köztük előző, lejátszás/szünet, következő. A gombok alatt a szám címe,
+  alatta kisebben „Következő: …” (ismétlés és keverés szerint; ha nincs következő, a sor nem látszik).
+- Alapméret 4 × 1 cella (egy kezdőképernyő-sorba belefér), átméretezhető.
+
+**Listák exportálása** (Listák fül, fejléc)
+- Kiválasztó ablak: a Kedvencek, a Legtöbbet és a Nemrég játszott, valamint a saját listák jelölőnégyzettel
+  (alapból a saját listák), „Összes kijelölése”, és „Azonos nevű fájlok felülírása” (alapból ki).
+- Utána a rendszer mappaválasztója; listánként egy `<név>.m3u8` (UTF-8, kiterjesztett M3U: `#PLAYLIST`,
+  `#EXTINF` hosszal és „Előadó - Cím” felirattal). A szám útvonala a célmappához képest relatív, ha egy
+  tárhelyen vannak, különben teljes útvonal. A fájlnévben tiltott karakterek helyett „_”.
+- Felülírás nélkül foglalt névnél „Név (2).m3u8”; felülírással a meglévő fájl tartalma cserélődik.
+- Összesítő: a mappa és listánként a fájlnév és a számok száma, vagy a hiba. Engedély és internet nem kell.
+
+## 12. Bővítés (1.4.0) – lejátszásszámok importálása (2026-11-16)
+
+- Beállítások → Zenetár → „Lejátszásszámok importálása”: a rendszer fájlválasztójával kiválasztott CSV
+  (pontosvesszővel, vesszővel vagy tabulátorral tagolt, UTF-8; oszlopok: `count`, `duration`, `title`, `artist`,
+  fejléc nélkül ebben a sorrendben). Engedély és internet nem kell.
+- Párosítás: a cím (ékezet-, kisbetű- és szóközfüggetlenül) vagy a fájlnév alapján; több jelöltnél az előadó,
+  majd a hossz (±3 mp) dönt, egyébként a sor „kétértelmű”. Egyetlen jelöltnél, ha a hossz 10 mp-nél jobban
+  eltér, a sor nem találat (más változat).
+- Csak növel: ha a SzabadZenében egy számnak már nagyobb vagy egyenlő a számlálója, az marad. Az „utolsó
+  lejátszás” ideje nem változik. Az újraimportálás nem duplázza a számokat.
+- Összesítő: beolvasott sorok, megnőtt, változatlan, nem talált és kétértelmű számok, néhány példa címmel.
+- A kiolvasó szkript (`tools/scrape_play_counts.py`) egy másik lejátszó „Legtöbbet játszott” listáját olvassa ki
+  adb-vel a képernyőről (csak olvas); a CSV a telefonról másolva egyetlen lépésben betölthető.

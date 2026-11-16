@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Magyar szövegek. -->
 <resources>
+    <string name="app_name">Zengő</string>
     <!-- Navigáció -->
     <string name="nav_library">Zenetár</string>
     <string name="nav_settings">Beállítások</string>
@@ -13,9 +14,9 @@
     </plurals>
     <string name="library_scanning">Zenék keresése…</string>
     <string name="library_empty_title">Nem található zene</string>
-    <string name="library_empty_body">Másolj hangfájlokat a telefon Zene (Music) mappájába – a SzabadZene automatikusan megtalálja őket.</string>
+    <string name="library_empty_body">Másolj hangfájlokat a telefon Zene (Music) mappájába – a Zengő automatikusan megtalálja őket.</string>
     <string name="permission_title">Hozzáférés a zenéidhez</string>
-    <string name="permission_body">A SzabadZene a telefonon tárolt zenéidet játssza le. A számok listázásához engedély kell a hangfájlok olvasásához. Semmi nem kerül ki a készülékről.</string>
+    <string name="permission_body">A Zengő a telefonon tárolt zenéidet játssza le. A számok listázásához engedély kell a hangfájlok olvasásához. Semmi nem kerül ki a készülékről.</string>
     <string name="permission_denied_body">A hangfájlok olvasását megtagadtad. A rendszerbeállításokban, az Engedélyek között bármikor megadhatod.</string>
     <string name="permission_grant">Engedély megadása</string>
     <string name="permission_open_settings">Rendszerbeállítások megnyitása</string>
@@ -47,9 +48,6 @@
     <string name="cd_next">Következő szám</string>
     <string name="cd_shuffle_on">Véletlen sorrend: be</string>
     <string name="cd_shuffle_off">Véletlen sorrend: ki</string>
-    <string name="cd_repeat_off">Ismétlés: ki</string>
-    <string name="cd_repeat_all">Ismétlés: összes</string>
-    <string name="cd_repeat_one">Ismétlés: egy szám</string>
     <string name="cd_minimize">Lejátszó kicsinyítése</string>
     <string name="cd_more_actions">További műveletek</string>
     <string name="cd_open_player">Lejátszó megnyitása</string>
@@ -147,7 +145,7 @@
     <string name="playlist_rename">Átnevezés</string>
     <string name="playlist_delete_title">Törlöd a listát?</string>
     <string name="playlist_delete_message">A(z) „%1$s” lista törlődik. A zenefájlok a telefonon maradnak.</string>
-    <string name="playlists_empty">Még nincs saját listád. Hozz létre egyet a fenti gombbal, vagy egy szám menüjéből.</string>
+    <string name="playlists_empty">Még nincs saját listád. Hozz létre egyet a fenti gombbal vagy egy szám menüjéből, vagy importálj listafájlokat (.m3u, .pls) az importálás gombbal.</string>
     <string name="playlist_empty">A lista üres. Számot a szám menüjéből adhatsz hozzá.</string>
     <string name="favorites_empty">Még nincs kedvenced. Használd a lejátszó szív gombját, vagy egy szám menüjében a „Hozzáadás a kedvencekhez” pontot.</string>
     <plurals name="add_to_playlist_title">
@@ -206,11 +204,11 @@
     <string name="settings_help_desc">A fontos funkciók használata</string>
     <string name="settings_licenses">Licencek</string>
     <string name="settings_licenses_desc">Az alkalmazás nyílt forráskódú összetevői</string>
-    <string name="licenses_intro">A SzabadZene szabad szoftver, GPL-3.0 licenccel. Az alábbi nyílt forráskódú összetevőket használja:</string>
+    <string name="licenses_intro">A Zengő szabad szoftver, GPL-3.0 licenccel. Az alábbi nyílt forráskódú összetevőket használja:</string>
 
     <!-- Súgó -->
     <string name="help_menu_title">Számmenü</string>
-    <string name="help_menu_body">Minden szám jobb oldalán a ⋮ terület nyitja meg a szám műveleteit. A teljes terület koppintható, és sosem indít lejátszást.</string>
+    <string name="help_menu_body">Minden szám jobb oldalán a kerek ••• gomb nyitja meg a szám műveleteit. A körülötte lévő teljes terület koppintható, és sosem indít lejátszást. Az alsó fülek között oldalra húzással is válthatsz. A Zenetár fejléce lefelé görgetve eltűnik, és a lista tetején jön vissza; az ottani ⋮ menüben adhatod meg, mely fülek látszanak. A betű- és ikonméret a Beállítások → Megjelenés részben állítható.</string>
     <string name="help_skip_title">Ugrógombok</string>
     <string name="help_skip_body">A csúszka alatti −/+ gombok az aktuális számon belül ugranak. Mindig látszanak, a minilejátszóban is. A lépést irányonként a Beállításokban adhatod meg.</string>
     <string name="help_queue_title">Várólista</string>
@@ -316,7 +314,7 @@
     <string name="error_trim">A vágás nem sikerült. Az eredeti fájl változatlan.</string>
     <string name="error_preview">Ez a fájl nem hallgatható elő.</string>
     <string name="ringtone_permission_title">Csengőhang módosításának engedélyezése</string>
-    <string name="ringtone_permission_body">Az Android csak akkor engedi módosítani a csengőhangot, ha az alkalmazásnak megadod a „Rendszerbeállítások módosítása” engedélyt. A következő képernyőn – ez az Android saját beállítása – kapcsold be a SzabadZene számára, majd lépj vissza.</string>
+    <string name="ringtone_permission_body">Az Android csak akkor engedi módosítani a csengőhangot, ha az alkalmazásnak megadod a „Rendszerbeállítások módosítása” engedélyt. A következő képernyőn – ez az Android saját beállítása – kapcsold be a Zengő számára, majd lépj vissza.</string>
     <string name="ringtone_open_settings">Beállítás megnyitása</string>
     <string name="ringtone_denied">A csengőhang nem változott: nem kaptunk engedélyt a rendszerbeállítások módosítására.</string>
     <string name="toast_ringtone_set">Csengőhang beállítva: %1$s</string>
@@ -329,10 +327,176 @@ Ha csak egy listából vennéd ki, az „Eltávolítás ebből a listából” p
     <string name="toast_file_deleted">Törölve a telefonról: %1$s</string>
     <string name="error_delete">A fájl nem törlődött.</string>
     <string name="error_permission_storage">Ehhez a tárhely módosítási engedélye szükséges.</string>
-    <string name="widget_label">SzabadZene lejátszó</string>
-    <string name="widget_description">Aktuális szám lejátszás/szünet, előző és következő gombbal</string>
+    <string name="widget_label">Zengő lejátszó</string>
+    <string name="widget_description">Borító, lejátszó- és ± másodperces ugrógombok, a mostani és a következő szám</string>
     <string name="help_tools_title">Hang- és fájleszközök</string>
-    <string name="help_tools_body">A hangszínszabályzó és az elalvásidőzítő a lejátszóban és a Beállításokban érhető el. A szám menüjéből szerkesztheted a címkéit és a borítóját, kivághatsz egy részt új fájlba (Music/SzabadZene), beállíthatod csengőhangként, vagy törölheted a fájlt a telefonról – a törlés mindig megerősítést kér, és független a listából való eltávolítástól.</string>
+    <string name="help_tools_body">A hangszínszabályzó és az elalvásidőzítő a lejátszóban és a Beállításokban érhető el. A szám menüjéből szerkesztheted a címkéit és a borítóját, kivághatsz egy részt új fájlba (Music/Orotund), beállíthatod csengőhangként, vagy törölheted a fájlt a telefonról – a törlés mindig megerősítést kér, és független a listából való eltávolítástól.</string>
     <string name="help_widget_title">Kezdőképernyős widget</string>
-    <string name="help_widget_body">A kezdőképernyő widgetlistájából add hozzá a SzabadZene widgetet, és onnan is vezérelheted a lejátszást.</string>
+    <string name="help_widget_body">A kezdőképernyő widgetlistájából add hozzá a Zengő widgetet. Látszik rajta a borító, a lejátszógombok – a két szélükön a ± másodperces ugrógombbal –, alattuk a mostani szám címe, alatta kisebben a következőé.</string>
+
+    <!-- 5. rész: lejátszó-bővítések, statisztika, dalszöveg -->
+    <string name="cd_skip_settings">Ugrógombok beállítása</string>
+    <string name="repeat_mode_stop">leállás a szám végén</string>
+    <string name="repeat_mode_one">egy dal ismétlése</string>
+    <string name="repeat_mode_off">lejátszás a sor végéig</string>
+    <string name="repeat_mode_all">a sor ismétlése</string>
+    <string name="cd_repeat_mode">Ismétlés és leállás: %1$s</string>
+    <string name="cd_speed">Lejátszási sebesség: %1$s</string>
+    <string name="cd_volume">Hangerő</string>
+    <string name="cd_queue_position">Várólista, %2$d számból a(z) %1$d.</string>
+    <string name="player_tab_song">Dal</string>
+    <string name="player_tab_lyrics">Dalszöveg</string>
+    <string name="next_up">» %1$s</string>
+    <string name="repeat_dialog_title">Ismétlés és leállás</string>
+    <string name="repeat_desc_stop">Lejátszás leállítása, amikor az aktuális dal véget ér</string>
+    <string name="repeat_desc_one">Egy dal lejátszása többször</string>
+    <string name="repeat_desc_off">A következő dal automatikus lejátszása, amíg a sor el nem fogy</string>
+    <string name="repeat_desc_all">A következő dal automatikus lejátszása és a sor megismétlése</string>
+    <string name="speed_title">Lejátszási sebesség</string>
+    <string name="cd_speed_down">Lassabb</string>
+    <string name="cd_speed_up">Gyorsabb</string>
+    <string name="speed_note">A hangmagasság nem változik. A sebesség minden számra érvényes, amíg át nem állítod.</string>
+    <string name="speed_reset">Normál (1.0×)</string>
+    <string name="volume_title">Zene hangereje</string>
+    <string name="volume_fixed">Ezen a készüléken az alkalmazások nem állíthatják a hangerőt.</string>
+    <string name="cd_volume_down">Halkítás</string>
+    <string name="cd_volume_up">Hangosítás</string>
+    <string name="skip_settings_title">Ugrógombok</string>
+    <string name="skip_extra_title">További gombok a teljes lejátszóban</string>
+    <string name="skip_extra_body">Legfeljebb két érték, mindkét irányba. Akkor jelennek meg, ha elférnek; a fenti fő gombok mindig látszanak.</string>
+    <string name="play_count_title">Lejátszások száma</string>
+    <string name="cd_play_count_down">Csökkentés</string>
+    <string name="cd_play_count_up">Növelés</string>
+    <string name="action_edit_lyrics">Dalszöveg szerkesztése</string>
+    <string name="toast_lyrics_saved">Dalszöveg mentve</string>
+    <string name="lyrics_unsupported">Ennél a fájltípusnál a dalszöveg nem olvasható.</string>
+    <string name="lyrics_none">Ehhez a számhoz nincs dalszöveg.</string>
+    <string name="lyrics_add">Dalszöveg hozzáadása</string>
+    <string name="lyrics_edit">Dalszöveg szerkesztése</string>
+    <string name="lyrics_editor_title">Dalszöveg</string>
+    <string name="lyrics_placeholder">Írd vagy illeszd be ide a dalszöveget</string>
+    <string name="lyrics_editor_note">A dalszöveg a zenefájlba kerül. Az időzített, LRC formátumú szöveg ([01:23.45] sor) lejátszás közben kiemelve követi a zenét. Üres szöveg mentése törli a dalszöveget.</string>
+    <string name="lyrics_import_failed">A fájl nem olvasható (legfeljebb 512 KB-os szövegfájl kell).</string>
+    <string name="lyrics_import">Fájlból</string>
+    <string name="search_tracks_hint">Dalok keresése (%1$d)</string>
+    <string name="most_played_title">Legtöbbet játszott</string>
+    <string name="recently_played_title">Nemrég játszott</string>
+    <string name="most_played_empty">Itt jelennek meg a meghallgatott számok. Egy lejátszás akkor számít, ha a szám felét (legfeljebb 4 percet) meghallgattad.</string>
+    <string name="recently_played_empty">Itt jelennek meg a nemrég meghallgatott számok.</string>
+    <string name="recent_clear">Előzmények törlése</string>
+    <string name="recent_clear_message">A Nemrég játszott lista kiürül. A lejátszásszámok megmaradnak.</string>
+    <string name="most_played_reset">Lejátszásszámok nullázása</string>
+    <string name="most_played_reset_message">Minden szám lejátszásszáma 0 lesz. Ez nem vonható vissza.</string>
+    <string name="most_played_reset_confirm">Nullázás</string>
+    <string name="settings_skip_extra">Ugrógombok a teljes lejátszóban</string>
+    <string name="settings_skip_extra_value">%1$s mp</string>
+    <string name="settings_restart_threshold">Előző gomb: a szám elejére, ha ennyi eltelt</string>
+    <string name="settings_restart_threshold_value">%1$d mp (korábban: előző szám)</string>
+    <string name="help_player_title">Lejátszó</string>
+    <string name="help_player_body">Az alul futó számra koppintva nyílik meg a teljes lejátszó. Az alsó lejátszót balra vagy jobbra húzva számot válthatsz. Az Előző gomb először a szám elejére teker; az első néhány másodpercben (Beállítások) az előző számra lép. Az ismétlés gombja négy módot kínál, köztük a leállást az aktuális szám végén.</string>
+    <string name="help_stats_title">Lejátszásszám és dalszöveg</string>
+    <string name="help_stats_body">Egy lejátszás akkor számít, ha a szám felét (legfeljebb 4 percet) meghallgattad. A számot a szám menüjében módosíthatod. A Listák fülön automatikusan megjelenik a Legtöbbet és a Nemrég játszott lista. A fájlban tárolt dalszöveg a lejátszó Dalszöveg oldalán látszik; ott hozzá is adhatod vagy szerkesztheted.</string>
+    <plurals name="action_play_count">
+        <item quantity="one">Lejátszások száma: %1$d</item>
+        <item quantity="other">Lejátszások száma: %1$d</item>
+    </plurals>
+    <plurals name="play_count_subtitle">
+        <item quantity="one">%1$d lejátszás · %2$s</item>
+        <item quantity="other">%1$d lejátszás · %2$s</item>
+    </plurals>
+
+    <!-- 6. rész (1.2.0): kijelölés, méretek, listaimport -->
+    <string name="action_select">Számok kijelölése</string>
+    <string name="cd_close_selection">Kijelölés befejezése</string>
+    <string name="action_select_all">Összes kijelölése</string>
+    <string name="action_clear_selection">Kijelölés törlése</string>
+    <string name="action_more">További műveletek</string>
+    <plurals name="selection_count">
+        <item quantity="one">%d kijelölve</item>
+        <item quantity="other">%d kijelölve</item>
+    </plurals>
+    <plurals name="toast_tracks_added_to_favorites">
+        <item quantity="one">%d szám a kedvencek közé került</item>
+        <item quantity="other">%d szám a kedvencek közé került</item>
+    </plurals>
+    <plurals name="delete_files_title">
+        <item quantity="one">%d fájl törlése a telefonról?</item>
+        <item quantity="other">%d fájl törlése a telefonról?</item>
+    </plurals>
+    <plurals name="delete_files_body">
+        <item quantity="one">%1$d fájl (%2$s) véglegesen törlődik a telefon tárhelyéről, és kikerül minden listából, a kedvencek közül és a várólistából. Ez nem vonható vissza.</item>
+        <item quantity="other">%1$d fájl (összesen %2$s) véglegesen törlődik a telefon tárhelyéről, és kikerül minden listából, a kedvencek közül és a várólistából. Ez nem vonható vissza.</item>
+    </plurals>
+    <string name="delete_files_confirm">Fájlok törlése</string>
+    <plurals name="toast_files_deleted">
+        <item quantity="one">%d fájl törölve a telefonról</item>
+        <item quantity="other">%d fájl törölve a telefonról</item>
+    </plurals>
+    <string name="error_delete_partial">Nem minden fájl törlődött (törölve: %1$d / %2$d).</string>
+    <string name="settings_text_size">Betűméret</string>
+    <string name="settings_icon_size">Ikonméret</string>
+    <string name="settings_scale_value">%1$s · %2$d%%</string>
+    <string name="scale_small">Kicsi</string>
+    <string name="scale_normal">Normál</string>
+    <string name="scale_large">Nagy</string>
+    <string name="scale_larger">Nagyobb</string>
+    <string name="scale_largest">Legnagyobb</string>
+    <string name="playlist_import">Listák importálása</string>
+    <string name="playlist_import_files">Listafájlok kiválasztása (.m3u, .m3u8, .pls)</string>
+    <string name="playlist_import_folder">Mappa kiválasztása (a benne lévő listák)</string>
+    <string name="playlist_import_running">Listák importálása…</string>
+    <string name="playlist_import_done">Az importálás kész</string>
+    <string name="playlist_import_failed">A listákat nem sikerült importálni.</string>
+    <string name="playlist_import_none_found">Nem található listafájl (.m3u, .m3u8, .pls).</string>
+    <string name="playlist_import_line">%1$s – megtalálva: %2$d / %3$d</string>
+    <string name="playlist_import_line_no_match">%1$s – egyik száma sincs a zenetárban, nem jött létre</string>
+    <string name="playlist_import_line_unreadable">%1$s – nem olvasható</string>
+    <string name="playlist_import_line_not_playlist">%1$s – nem listafájl</string>
+    <string name="playlist_import_missing_hint">A zenetárban nem szereplő számok (pl. más eszközön vagy elrejtett mappában lévők) kimaradnak.</string>
+    <string name="action_save_as_playlist">Mentés új listaként</string>
+    <string name="toast_playlist_created">Lista létrehozva: %1$s</string>
+    <string name="help_select_title">Több szám kijelölése</string>
+    <string name="help_select_body">A Számok fülön a fejléc kijelölés gombjával (vagy egy számot hosszan nyomva) kapcsolhatod be a kijelölést. Koppints a számokra, majd a Lejátszás gombbal vagy a ⋮ menüből kezeld őket együtt: lejátszás következőként, várólistához vagy listához adás, kedvencek, megosztás, törlés. A Vissza gomb vagy az ✕ befejezi a kijelölést. A keresőmező melletti Lejátszás és Keverés ikon az összes számot sorrendben, illetve keverve indítja; hogy szóló zenénél mit tegyenek, a Beállítások → Lejátszás részben adhatod meg.</string>
+    <string name="help_import_title">Listák importálása</string>
+    <string name="help_import_body">A Listák fülön az importálás gomb .m3u, .m3u8 és .pls listafájlokat olvas be: választhatsz fájlokat vagy egy egész mappát (az almappáival együtt). Minden fájlból egy lista lesz a zenetárban megtalált számokkal, és az összesítő megmutatja, hányat talált meg. Az exportálás gomb a kijelölt listákat .m3u8 fájlként menti egy általad választott mappába. Albumot, előadót és mappát a menüjéből új listaként is menthetsz.</string>
+
+    <!-- 1.3.0: zenetár fülei, Lejátszás/Keverés viselkedés, widget, listaexport -->
+    <string name="settings_library_tabs">Zenetár fülei</string>
+    <string name="library_tabs_hint">Válaszd ki, mely fülek jelenjenek meg a Zenetárban. Ha csak egy marad, a fülsáv el is tűnik.</string>
+    <string name="settings_play_buttons">Lejátszás és Keverés gomb, ha már szól zene</string>
+    <string name="play_buttons_restart">Azonnal az új sorrend indul</string>
+    <string name="play_buttons_after_current">A mostani szám végigszól, utána jön az új sorrend</string>
+    <string name="toast_order_after_current">A mostani szám után sorrendben folytatódik</string>
+    <string name="toast_shuffle_after_current">A mostani szám után keverve folytatódik</string>
+    <string name="widget_next">Következő: %1$s</string>
+    <string name="playlist_export">Listák exportálása</string>
+    <string name="playlist_export_hint">Jelöld ki, mely listákat mentsem .m3u8 fájlba. Utána kiválaszthatod a mappát.</string>
+    <string name="playlist_export_overwrite">Azonos nevű fájlok felülírása</string>
+    <string name="playlist_export_choose_folder">Mappa kiválasztása</string>
+    <string name="playlist_export_running">Listák mentése…</string>
+    <string name="playlist_export_done">Exportálás kész</string>
+    <string name="playlist_export_folder">Mappa: %1$s</string>
+    <plurals name="playlist_export_line">
+        <item quantity="one">%1$s: %2$d szám</item>
+        <item quantity="other">%1$s: %2$d szám</item>
+    </plurals>
+    <string name="playlist_export_line_failed">%1$s: nem sikerült menteni</string>
+    <string name="playlist_export_failed">A mappába nem sikerült írni.</string>
+
+    <!-- 1.4.0: lejátszásszámok importálása -->
+    <string name="settings_import_counts">Lejátszásszámok importálása</string>
+    <string name="settings_import_counts_desc">CSV fájlból (számláló, hossz, cím, előadó); csak növel</string>
+    <string name="import_counts_running">A fájl olvasása…</string>
+    <string name="import_counts_done">Importálás kész</string>
+    <string name="import_counts_failed">A fájlt nem sikerült beolvasni.</string>
+    <string name="import_counts_empty">A fájlban nincs használható sor.</string>
+    <string name="import_counts_rows">Beolvasott sorok: %1$d</string>
+    <string name="import_counts_updated">Megnőtt a lejátszásszám: %1$d számnál</string>
+    <string name="import_counts_unchanged">Már ugyanennyi vagy több volt: %1$d számnál</string>
+    <string name="import_counts_not_matched">Nem találtam: %1$d · kétértelmű: %2$d</string>
+    <string name="import_counts_sample">Például:\n%1$s</string>
+    <string name="playlist_sort_name">Név</string>
+    <string name="playlist_sort_created">Létrehozás ideje</string>
+    <string name="playlist_sort_size">Számok száma</string>
+    <string name="playlist_special_first">Különleges listák mindig elöl</string>
 </resources>

@@ -172,4 +172,26 @@ class TagEditorTest {
             assertEquals(name, 3, encodings["TIT2"])
         }
     }
+
+    @Test
+    fun lyricsWriteReadAndKeepOtherTags() {
+        val lyrics = "[00:01.00]Árvíztűrő első sor\n[00:03.50]Tükörfúrógép – második"
+        for (name in listOf("fx_tagged.mp3", "fx_untagged.mp3", "fx_tagged.m4a", "fx_tagged.flac", "fx_tagged.ogg")) {
+            val file = fixture(name)
+            val before = TagEditor.read(file).values
+            val wanted = before.copy(lyrics = lyrics)
+            TagEditor.write(file, wanted, CoverChange.Keep)
+            assertTrue(name, TagEditor.verify(file, wanted, CoverChange.Keep))
+            val back = TagEditor.read(file).values
+            assertEquals(name, lyrics, back.lyrics)
+            assertEquals(name, before.title, back.title)
+            assertEquals(name, before.artist, back.artist)
+
+            // Null = a dalszöveghez nem nyúl; üres szöveg = törlés.
+            TagEditor.write(file, back.copy(title = "Más cím", lyrics = null), CoverChange.Keep)
+            assertEquals(name, lyrics, TagEditor.read(file).values.lyrics)
+            TagEditor.write(file, back.copy(lyrics = ""), CoverChange.Keep)
+            assertEquals(name, "", TagEditor.read(file).values.lyrics)
+        }
+    }
 }

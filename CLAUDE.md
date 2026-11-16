@@ -1,4 +1,4 @@
-# SzabadZene – projektutasítások
+# Orotund / Zengő (korábban SzabadZene) – projektutasítások
 
 Offline, natív Android-zenelejátszó (Kotlin, Jetpack Compose, Material 3, Media3). A teljes
 követelménylista: `docs/KOVETELMENYEK.md`. A munka állapota részenként: `docs/ALLAPOT.md` –
@@ -46,36 +46,54 @@ io.github.x1wer.szabadzene
 ├── SzabadZeneApp / AppContainer   – kézi függőségkezelés, egy példányos összetevők
 ├── MainActivity                    – Compose-gazda, téma a beállításokból; onStart/onStop köti a MediaControllert
 ├── data/
-│   ├── db/          Room v2: tracks (gyorsítótár), playlists, playlist_entries, favorites,
-│   │                queue_items, playback_state; DAO-k: TrackDao, PlaylistDao, FavoriteDao, QueueDao
+│   ├── db/          Room v3: tracks (gyorsítótár), playlists, playlist_entries, favorites,
+│   │                queue_items, playback_state, play_stats; DAO-k: TrackDao, PlaylistDao, FavoriteDao,
+│   │                QueueDao, PlayStatsDao (séma: app/schemas, AutoMigration 1→2→3, MigrationTest)
 │   ├── library/     MediaStoreScanner, LibraryRepository (szűrt + teljes folyam), Track,
 │   │                Id3TextReader, LibraryLogic (keresés, rendezés, csoportosítás, szűrés – tiszta Kotlin)
 │   ├── edit/        TagEditor (JAudioTagger: MP3 ID3v2.4/UTF-8, M4A, FLAC, OGG Vorbis – tiszta JVM),
 │   │                LosslessTrim (MP3-keret- és WAV-mintamásolás, tiszta Kotlin), AudioTrimmer (+ M4A
 │   │                átcsomagolás, FLAC/OGG → AAC újrakódolás MediaCodec-kel), TrackFileEditor (Android-oldal:
 │   │                másolat → írás → visszaolvasás → visszaírás → ellenőrzés; vágás új fájlba; törlés; csengőhang)
-│   ├── playlists/   PlaylistRepository (listák, kedvencek; forgetTrack a fájltörlés után)
-│   └── settings/    SettingsRepository (DataStore): ugrás, megjelenés, fejhallgató, szűrés, rendezés, hangszínszabályzó
+│   ├── playlists/   PlaylistRepository (listák, kedvencek; forgetTrack a fájltörlés után, a statisztikát is törli),
+│   │                PlaylistImport (M3U/PLS olvasás és párosítás – tiszta Kotlin), PlaylistImporter (SAF-os import),
+│   │                PlaylistExport (M3U8 írás, relatív útvonal – tiszta Kotlin), PlaylistExporter (SAF-os export)
+│   ├── stats/       PlayStatsRepository + SmartLists (Legtöbbet / Nemrég játszott – tiszta Kotlin),
+│   │                PlayCountImport (CSV → párosítás → csak növelő összevonás), PlayCountImporter
+│   ├── lyrics/      LrcParser (időzített és sima dalszöveg – tiszta Kotlin); olvasás/mentés: TrackFileEditor
+│   └── settings/    SettingsRepository (DataStore): ugrás (+ további gombok), lejátszás (Előző-küszöb, sebesség,
+│                    leállás a szám végén, Lejátszás/Keverés gomb viselkedése), megjelenés (+ betű- és ikonméret),
+│                    zenetár fülei (LibraryLayout), fejhallgató, szűrés, rendezés, EQ
 ├── playback/
 │   ├── PlaybackService   – MediaSessionService: az EGYETLEN ExoPlayer + MediaSession; várólista-mentés
 │   │                       és -visszaállítás, onPlaybackResumption, fejhallgató-figyelés
 │   ├── SkipController    – az EGYETLEN közös ugrási logika (tiszta Kotlin, unit-tesztelt)
-│   ├── SkipAwarePlayer   – ForwardingPlayer: rendszer/fejhallgató előre-vissza + beszúrások figyelése
-│   ├── QueueLogic        – visszaállítás és kevert sorrend (tiszta Kotlin, unit-tesztelt); QueueStore
+│   ├── SkipAwarePlayer   – ForwardingPlayer: rendszer/fejhallgató előre-vissza + beszúrások figyelése;
+│   │                       az „Előző” gomb (minden vezérlőé) itt kapja a beállítható küszöböt (PreviousLogic)
+│   ├── PlayCountTracker  – mikor számít meghallgatottnak egy szám (tiszta Kotlin); a szolgáltatás hajtja
+│   ├── QueueLogic        – visszaállítás, kevert sorrend, „a mostani szám végigszól” terv (tiszta Kotlin,
+│   │                       unit-tesztelt); QueueStore
 │   ├── PlayerConnection  – a felület MediaController-kapcsolata, PlaybackUiState és várólista-folyam
 │   ├── PlaybackCommands  – saját munkamenet-parancsok (ugrás, időzítő, újratöltés) és események (hiba)
 │   ├── SleepTimer        – elalvásidőzítő logikája (tiszta Kotlin); a szolgáltatás futtatja, állapota
 │   │                       munkamenet-extrákban jut a felülethez (PlayerConnection.sleepTimer)
 │   ├── EqualizerLogic / AudioEffectsController – előbeállítások (log-frekvenciás görbe), a hangmunkamenetre
 │   │                       kötött Equalizer + BassBoost; az elérhetőséget AudioEffectsRegistry teszi közzé
-│   └── PlayerWidget      – kezdőképernyős widget (RemoteViews); a szolgáltatás frissíti, a gombok médiagombok
+│   └── PlayerWidget      – kezdőképernyős widget (RemoteViews): borító, ±N mp, előző/lejátszás/következő, cím
+│                           és a következő szám; a szolgáltatás frissíti, a gombok médiagombok (az ugrás REWIND /
+│                           FAST_FORWARD kóddal a közös ugrási logikán megy át)
 └── ui/
-    ├── AppRoot           – navigáció: fő képernyő 4 füllel (saját ágakkal), teljes lejátszó, várólista
+    ├── AppRoot           – navigáció: fő képernyő 4 füllel (HorizontalPager, fülenként saját NavHost; a Vissza
+    │                       gombot csak a látható fül kapja), teljes lejátszó, várólista
     ├── Menus             – közös szám- és gyűjteménymenü (MenuState, MenuHost), megosztás, listához adás
-    ├── components/       – TrackRow, CollectionRow, ReorderableColumn, Dialogs, SkipButton, Artwork, ...
+    ├── components/       – TrackRow (+ RowMenuArea, rowDivider), CollectionRow, Icon (méretszorzós ikon),
+    │                       ReorderableColumn, Dialogs, SkipButton, Artwork, ...
     ├── edit/             – FileActionsHost (engedélyfolyamatok API-szint szerint), TagEditorDialog, TrimDialog
     ├── sound/            – EqualizerScreen, SleepTimerDialog
-    ├── library/ playlists/ folders/ queue/ player/ settings/ theme/
+    ├── lyrics/           – LyricsPane (Dalszöveg nézet), LyricsEditorDialog
+    ├── player/           – FullPlayer, MiniPlayer, PlayerControls (ugrósor, vezérlősor, műveletsor),
+    │                       PlayerDialogs (ismétlési mód, sebesség, hangerő, ugrógombok, lejátszásszám)
+    ├── library/ playlists/ folders/ queue/ settings/ theme/ (UiScale: betű- és ikonméret)
 ```
 
 - Az ugrás útja: gomb → `PlayerConnection.skip()` → saját munkamenet-parancs →
@@ -95,5 +113,32 @@ io.github.x1wer.szabadzene
 - Tesztfájlok a JVM- és műszeres tesztekhez: `app/src/sharedTest/assets/audio/`
   (`python -I tools/generate_test_audio.py --fixtures`).
 - API 28-on a MediaStore-törlés a fájlt nem törli: `TrackFileEditor.deleteLegacy` a fájlt magától törli (regressziós teszt: `FileOperationsTest`).
-- Átadási dokumentumok: `README.md`, `docs/TESZTOSSZEFOGLALO.md`, `docs/LICENCEK.md`. Verzió: 1.0.0.
+- Átadási dokumentumok: `README.md`, `docs/TESZTOSSZEFOGLALO.md`, `docs/LICENCEK.md`. Verzió: 1.5.0.
+- A zenetár Lejátszás/Keverés gombja (`rememberPlayAll` → `PlayerConnection.playAll`): „a mostani szám
+  végigszól” módban, ha szól zene, a `PLAY_KEEP_CURRENT` munkamenet-parancs megy a szolgáltatásnak, amely a
+  most szóló elem körül cseréli le a várólistát (az elemet nem cseréli, így a lejátszás nem szakad meg).
+- Rövid visszajelzés a képernyőkből: `LocalSnackbarHost` (AppRoot adja).
+- A zenetár fejléce `exitUntilCollapsedScrollBehavior`-ral tűnik el; a `nestedScroll` csak akkor kapcsolódik,
+  amikor a fejléc látszik (keresésben és kijelölésben nem), különben a rejtett fejléc elnyelné a görgetést.
+- Műszeres tesztben a listákon középen húzz (a lista alja a navigációs sáv mögé fut), és számíts rá, hogy a
+  fő képernyő lapozója a többi fület is komponálva tartja (ugyanaz a címke több csomópontnál is lehet).
+- A zenetár beolvasását a `LibraryRepository.start()` indítja (egyszeri, többször hívható): az `Application`
+  és a `LibraryScreen` is hívja, ha van engedély – a folyamat indulhat engedély nélkül is (widget, médiagomb).
+- Ikont mindig az `ui/components/Icon` burkolóval tegyél ki, a méretet a `size` paraméterben add meg (a
+  módosítóban megadott méretre nem hat a felhasználó ikonméret-szorzója).
+- A Beállítások lista a navigációs sáv mögött is fut: műszeres tesztben az alsó sorokat a saját kattintási
+  műveletükkel (`performSemanticsAction(SemanticsActions.OnClick)`) nyisd meg, ne érintéssel.
+- A „leállás az aktuális szám végén” mód nem a lejátszó ismétlési módja: a `PlaybackPrefs.stopAfterCurrent`
+  beállítás tárolja, a szolgáltatás `pauseAtEndOfMediaItems`-szel hajtja végre, a felület (`AppRoot`) egy
+  negyedik ismétlési módként mutatja.
+- Parancssori (heredoc) Python-szkriptben a dupla visszaperjel a futtatáson átmenve egyszeresre változhat,
+  így a kódba szánt sortörés-jelből valódi sortörés lesz: ilyen szerkesztéshez fájlba írt szkriptet vagy az
+  Edit eszközt használd. Minden szövegfájl UTF-8 (az `app/build.gradle.kts` egy része korábban Latin-1 volt,
+  ezt az 1.1.0-ban javítottuk) – ékezetes szöveget mindig UTF-8-ként írj.
 - Kiadási aláírás még nincs. Ha kell: saját, új kulccsal (más app kulcsát ne használd).
+- Ha a gépre telefon is csatlakoztatva van, a `connectedDebugAndroidTest` MINDEN eszközön futna: állítsd be az
+  `ANDROID_SERIAL` változót az emulátorra (pl. `emulator-5554`), a valódi telefonra ne települjön teszt.
+- A fájlíró eszköz a `\uFEFF` escape-et valódi BOM-karakterré alakíthatja (lint `ByteOrderMark` hiba): ilyen
+  escape-et tartalmazó forrásnál ellenőrizd (`grep -c $'\xef\xbb\xbf' fájl`).
+- Telefont vezérlő (adb-s) szkriptet mindig egy példányban, `run_in_background`-dal indíts, ne `&`-tel, és indítás
+  előtt ellenőrizd, hogy nem fut-e már egy (`Get-CimInstance Win32_Process` … `scrape_`). Két példány egymást zavarja.

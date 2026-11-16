@@ -1,7 +1,101 @@
-# SzabadZene 1.0.0 – tesztösszefoglaló
+# SzabadZene – tesztösszefoglaló
 
-Dátum: 2026-11-15 · Verzió: 1.0.0 (versionCode 4), debug build, debug kulccsal aláírva ·
-APK: `dist/SzabadZene-1.0.0-debug.apk` (SHA-256: `dist/SHA256SUMS.txt`).
+Aktuális verzió: **1.5.0** (versionCode 10, 2026-11-16), debug build, debug kulccsal aláírva ·
+APK: `dist/SzabadZene-1.5.0-debug.apk` (SHA-256: `dist/SHA256SUMS.txt`).
+Az 1.4.0 (lejátszásszámok importálása) ellenőrzése az `ALLAPOT.md` 8. részében: 151/151 JVM-teszt, 45/45 műszeres
+teszt (`Clean_API_37`), lint 0 hiba. A verziók újdonságainak ellenőrzése a „B-1.3.0”, „B-1.2.0” és „B-1.1.0” fejezetben (a legújabb elöl); az 1–7.
+fejezet az 1.0.0 átfogó ellenőrzése (2026-11-15), amely a későbbi verziókra is érvényes, kivéve ahol egy
+B-fejezet mást mond.
+
+## B-1.3.0. Az 1.3.0 bővítései (2026-11-16)
+
+Bővítések: a Zenetár fejléce görgetéskor eltűnik és csak a lista tetején jön vissza; választható belső fülek
+(egy fülnél nincs fülsáv); Lejátszás/Keverés ikon a keresőmező mellett, beállítható viselkedéssel („a mostani
+szám végigszól”); új widget-elrendezés (borító, ±N mp, előző/lejátszás/következő, cím, következő szám);
+listaexport .m3u8-ba (részletek: `KOVETELMENYEK.md` 11. fejezet, `ALLAPOT.md` 7. rész).
+
+| Készlet (végleges kódon) | Eredmény |
+|---|---|
+| JVM-egységtesztek (`clean` után, és a végleges kódon újra) | **142/142** sikeres (10 új) |
+| Műszeres tesztek, `Clean_API_37` | **44/44** sikeres (5 új) |
+| Műszeres tesztek, `Medium_Phone_API_28` | **44/44** sikeres |
+| `lintDebug` | 0 hiba, 15 figyelmeztetés (ugyanazok, mint az 1.2.0-ban) |
+| APK (aapt2) | versionCode 7, 1.3.0-debug; nincs `INTERNET` és `ACCESS_NETWORK_STATE` |
+
+A műszeres tesztek után csak a widget metaadatának `minHeight` értéke változott (88 → 40 dp, hogy Android 9-en
+is 4 × 1 legyen); ezt kézzel ellenőriztem mindkét emulátoron, a lint és az egységtesztek ezután is lefutottak.
+
+Tesztelés közben talált és javított hiba: ha az app folyamata engedély nélkül indult (pl. a widget vagy egy
+médiagomb indította), és az engedélyt később a rendszerbeállításokban adták meg, a Zenetár a következő
+megnyitáskor végtelenül „beolvasott”. Most a képernyő minden esetben elindítja a beolvasást, ha engedélyt lát
+(`LibraryRepository.start()` egyszeri, többször hívható). A `LibraryLayoutTest` friss telepítésen ezt is lefedi.
+
+Kézzel kipróbálva (megfelelt), `Clean_API_37`, 51 számmal: a fejléc lefelé görgetve eltűnik, részleges
+visszagörgetésnél rejtve marad, a lista tetején visszajön; fülek ablaka a fejléc ⋮ menüjéből és a
+Beállításokból, egyetlen fülnél a fülsáv eltűnik; „a mostani szám végigszól” módban a Keverés a szóló számot
+(#5/51) megtartja, a kevert sorrend első helyére teszi, üzenetet mutat, a Lejátszás ugyanazt a számot a
+#5/51 helyre teszi vissza, a lejátszási pozíció közben tovább nő; widget 4 × 1-ben: borító, cím, „Következő:
+Tavaszi szél”, lejátszás, +10 mp (123,9 → 134,2 s), −10 mp (→ 124,7 s); import (Buli 3/4, Edzes 2/2, Regi
+1/1), export a Music/Export mappába relatív útvonalakkal, második export felülírás nélkül „(2)” fájlokkal,
+felülírással a meglévő fájl cseréje (egy 2091 bájtos fájl 117 bájtosra rövidült, maradék nélkül).
+
+`Medium_Phone_API_28`: a widget 4 × 1-ként kerül a kezdőképernyőre, és a tartalma egy sorban elfér.
+
+Nem próbáltam ki: valódi telefonon és más launcherrel (pl. Samsung) a widget méretét és a fejléc eltűnését
+ujjal; exportot SD-kártyára és a Letöltések-szolgáltatóba; Android 9-en a widget gombjait és az exportot kézzel.
+
+## B-1.2.0. Az 1.2.0 bővítései (2026-11-16)
+
+Bővítések: állítható betű- és ikonméret, Lejátszás/Keverés gomb és kijelölő mód a Számok fülön (együttes
+lejátszás, várólista, lista, kedvencek, megosztás, törlés), elválasztó vonal és szélesebb (72 dp) menügomb a
+sorokon, oldalra húzás az alsó fülek között, listaimport (.m3u, .m3u8, .pls; fájlok vagy mappa), „Mentés új
+listaként” (részletek: `KOVETELMENYEK.md` 10. fejezet, `ALLAPOT.md` 6. rész).
+
+| Készlet (végleges kódon) | Eredmény |
+|---|---|
+| JVM-egységtesztek (`clean` után) | **132/132** sikeres (12 új) |
+| Műszeres tesztek, `Clean_API_37` | **39/39** sikeres (6 új) |
+| Műszeres tesztek, `Medium_Phone_API_28` | **39/39** sikeres |
+| `lintDebug` | 0 hiba, 15 figyelmeztetés |
+| Összefésült manifest / APK | nincs `INTERNET` és `ACCESS_NETWORK_STATE` (aapt2-vel ellenőrizve) |
+
+Kézzel kipróbálva (megfelelt), `Clean_API_37`: új számsorok (elválasztó, kerek „•••” gomb), Lejátszás/Keverés;
+kijelölés gombbal és hosszú nyomással, 3 szám a kedvencekhez, a sáv bezárul; két ideiglenes másolat törlése
+egyetlen rendszerablakkal; oldalra húzás a fülek között; mappaimport (3/4 és almappából 2/2, .txt kihagyva),
+fájlimport windows-1250 kódolással (1/1), az importált lista tartalma és sorrendje; album mentése listaként;
+150%-os betű és ikon a zenetárban és a teljes lejátszóban. `Medium_Phone_API_28`: kijelölés, Vissza, húzás,
+import a Letöltésekből.
+
+Nem próbáltam ki: a húzásos fülváltást valódi ujjal; több fájl törlését és megosztását kézzel Android 9-en;
+nagyon nagy zenetár importálásának sebességét.
+
+## B-1.1.0. Az 1.1.0 bővítései (2026-11-16)
+
+Bővítések: mindig látható keresőmező, legújabb-elöl rendezés, minilejátszó előző/következő gombbal,
+húzással és várólista-sorszámmal, beállítható „Előző”-küszöb, teljes lejátszó több ugrógombbal,
+sebességgel, hangerővel és négy ismétlési móddal, lejátszásszám és automatikus listák, dalszöveg
+(részletek: `KOVETELMENYEK.md` 9. fejezet, `ALLAPOT.md` 5. rész).
+
+| Készlet (végleges kódon) | Eredmény |
+|---|---|
+| JVM-egységtesztek (`clean` után) | **120/120** sikeres (25 új) |
+| Műszeres tesztek, `Clean_API_37` | **33/33** sikeres (5 új) |
+| Műszeres tesztek, `Medium_Phone_API_28` | **33/33** sikeres |
+| `lintDebug` | 0 hiba, 15 figyelmeztetés |
+| Összefésült manifest / APK | nincs `INTERNET` és `ACCESS_NETWORK_STATE` (aapt2-vel ellenőrizve) |
+
+Kézzel, `Clean_API_37`-en kipróbálva (megfelelt): keresőmező „Dalok keresése (11)” felirattal; legújabb
+szám felül; minilejátszó (#2/11, „» következő”, előző/következő, ±10 mp); teljes lejátszó 411 dp-n
+−30 −10 −5 / +5 +10 +30 gombbal és fogaskerékkel; az Előző gomb 40 mp-nél a szám elejére, újra megnyomva
+az előző számra lép; a 12 mp-es szám kétszeri meghallgatás után 2 lejátszást mutat; kézi átírás 2 → 6, a
+lista újrarendeződik; Nemrég játszott a legfrissebbel kezdve; ismétlés-választó négy móddal; „leállás az
+aktuális dal végén”: a 60 mp-es szám végén szünet, a következő szám 0:00-n áll; 1.5× sebesség a
+lejátszóban is érvényes; dalszöveg hozzáadása FLAC-fájlhoz a rendszer írási engedélyével, majd időzített
+kiemelés lejátszás közben; a Beállítások új sorai; 720×1280-as, 360 dpi-s kijelzőn 2,0× betűvel a
+minilejátszó minden gombja elfér.
+
+Nem próbáltam ki: az új funkciókat kézzel Android 9-en (ott csak a műszeres tesztek futottak); hangerő
+valódi Bluetooth-eszközzel; a húzásos számváltás érzékenységét valódi ujjal.
 
 Ami itt „megfelelt”, azt tényleg lefuttattam; ami nem futott le, azt külön, indoklással sorolom fel.
 Tesztkörnyezet: két Android-emulátor – `Clean_API_37` (API 37, fő teszteszköz) és

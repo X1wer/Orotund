@@ -16,9 +16,11 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaButtonReceiver
 import io.github.x1wer.szabadzene.MainActivity
 import io.github.x1wer.szabadzene.R
+import io.github.x1wer.szabadzene.data.settings.SkipSettings
 
 /**
- * Kezdőképernyős widget: aktuális szám, lejátszás/szünet, előző/következő.
+ * Kezdőképernyős widget: balra a borító, jobbra felül a gombok (a két szélen ±N másodperces ugrás,
+ * köztük előző, lejátszás/szünet, következő), alattuk a szám címe, alatta kisebben a következő számé.
  *
  * Az állapotot mindig a lejátszószolgáltatás küldi (ugyanabból a lejátszóból, amit az app és az
  * értesítés is mutat), és el is menti, hogy a rendszer által kért újrarajzolás is ugyanazt mutassa.
@@ -33,6 +35,10 @@ class PlayerWidget : AppWidgetProvider() {
         val title: String?,
         val artist: String?,
         val playing: Boolean,
+        /** A következő szám címe (ismétlés és keverés szerint), ha van. */
+        val nextTitle: String? = null,
+        val backSeconds: Int = SkipSettings.DEFAULT_SECONDS,
+        val forwardSeconds: Int = SkipSettings.DEFAULT_SECONDS,
     )
 
     @OptIn(UnstableApi::class)
@@ -83,6 +89,9 @@ class PlayerWidget : AppWidgetProvider() {
                 putString("title", snapshot.title)
                 putString("artist", snapshot.artist)
                 putBoolean("playing", snapshot.playing)
+                putString("next_title", snapshot.nextTitle)
+                putInt("back_seconds", snapshot.backSeconds)
+                putInt("forward_seconds", snapshot.forwardSeconds)
             }
         }
 
@@ -93,6 +102,9 @@ class PlayerWidget : AppWidgetProvider() {
                 title = prefs.getString("title", null),
                 artist = prefs.getString("artist", null),
                 playing = prefs.getBoolean("playing", false),
+                nextTitle = prefs.getString("next_title", null),
+                backSeconds = SkipSettings.sanitize(prefs.getInt("back_seconds", SkipSettings.DEFAULT_SECONDS)),
+                forwardSeconds = SkipSettings.sanitize(prefs.getInt("forward_seconds", SkipSettings.DEFAULT_SECONDS)),
             )
         }
 
@@ -109,8 +121,11 @@ class PlayerWidget : AppWidgetProvider() {
                 R.id.widget_title,
                 if (hasTrack) snapshot.title else context.getString(R.string.player_nothing_loaded),
             )
-            views.setTextViewText(R.id.widget_artist, snapshot.artist ?: context.getString(R.string.unknown_artist))
-            views.setViewVisibility(R.id.widget_artist, if (hasTrack) View.VISIBLE else View.GONE)
+            val next = snapshot.nextTitle?.takeIf { hasTrack && it.isNotBlank() }
+            views.setTextViewText(R.id.widget_next_title, next?.let { context.getString(R.string.widget_next, it) }.orEmpty())
+            views.setViewVisibility(R.id.widget_next_title, if (next != null) View.VISIBLE else View.GONE)
+            views.setTextViewText(R.id.widget_skip_back_label, snapshot.backSeconds.toString())
+            views.setTextViewText(R.id.widget_skip_forward_label, snapshot.forwardSeconds.toString())
             if (art != null) {
                 views.setImageViewBitmap(R.id.widget_art, art)
             } else {
@@ -127,10 +142,15 @@ class PlayerWidget : AppWidgetProvider() {
             // Minden felirat az app nyelvén (a rétegfájl szövegeit a kezdőképernyő a rendszer nyelvén oldaná fel).
             views.setContentDescription(R.id.widget_previous, context.getString(R.string.cd_previous))
             views.setContentDescription(R.id.widget_next, context.getString(R.string.cd_next))
+            views.setContentDescription(R.id.widget_skip_back, context.getString(R.string.cd_skip_back, snapshot.backSeconds))
+            views.setContentDescription(R.id.widget_skip_forward, context.getString(R.string.cd_skip_forward, snapshot.forwardSeconds))
             views.setOnClickPendingIntent(R.id.widget_play_pause, mediaKey(context, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))
             views.setOnClickPendingIntent(R.id.widget_previous, mediaKey(context, KeyEvent.KEYCODE_MEDIA_PREVIOUS))
             views.setOnClickPendingIntent(R.id.widget_next, mediaKey(context, KeyEvent.KEYCODE_MEDIA_NEXT))
-            views.setOnClickPendingIntent(R.id.widget_body, openApp(context))
+            views.setOnClickPendingIntent(R.id.widget_skip_back, mediaKey(context, KeyEvent.KEYCODE_MEDIA_REWIND))
+            views.setOnClickPendingIntent(R.id.widget_skip_forward, mediaKey(context, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD))
+            views.setOnClickPendingIntent(R.id.widget_art, openApp(context))
+            views.setOnClickPendingIntent(R.id.widget_texts, openApp(context))
             manager.updateAppWidget(ids, views)
         }
 

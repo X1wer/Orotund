@@ -16,6 +16,7 @@ import io.github.x1wer.szabadzene.data.library.groupFolders
 import io.github.x1wer.szabadzene.data.library.groupGenres
 import io.github.x1wer.szabadzene.data.library.sortTracks
 import io.github.x1wer.szabadzene.data.settings.LibrarySort
+import io.github.x1wer.szabadzene.data.stats.RankedTrack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -63,6 +64,14 @@ class LibraryViewModel(private val container: AppContainer) : ViewModel() {
     val favoriteIds: StateFlow<Set<Long>> = container.playlists.favoriteIds.stateIn(viewModelScope, started, emptySet())
     val favoriteTracks: StateFlow<List<Track>> = container.playlists.favoriteTracks.stateIn(viewModelScope, started, emptyList())
     val playlists: StateFlow<List<PlaylistSummary>> = container.playlists.playlists.stateIn(viewModelScope, started, emptyList())
+
+    /** Automatikus listák a lejátszási statisztikából. */
+    val mostPlayed: StateFlow<List<RankedTrack>> = container.playStats.mostPlayed
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, started, emptyList())
+    val recentlyPlayed: StateFlow<List<RankedTrack>> = container.playStats.recentlyPlayed
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, started, emptyList())
 
     val isScanning: StateFlow<Boolean> = library.isScanning
     val hasScannedOnce: StateFlow<Boolean> = library.hasScannedOnce

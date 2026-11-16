@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import io.github.x1wer.szabadzene.R
@@ -31,6 +32,7 @@ import io.github.x1wer.szabadzene.data.library.Track
 import io.github.x1wer.szabadzene.ui.LocalAppContainer
 import io.github.x1wer.szabadzene.ui.MenuState
 import io.github.x1wer.szabadzene.ui.components.ConfirmDialog
+import io.github.x1wer.szabadzene.ui.lyrics.LyricsEditorDialog
 import kotlinx.coroutines.launch
 
 /**
@@ -112,7 +114,8 @@ fun FileActionsHost(menu: MenuState, snackbar: SnackbarHostState) {
                 ) {
                     tagSaving = true
                     scope.launch {
-                        val result = editor.saveTags(track, values, cover)
+                        // A dalszöveghez a címkeszerkesztő nem nyúl (azt a saját szerkesztője kezeli).
+                        val result = editor.saveTags(track, values.copy(lyrics = null), cover)
                         tagSaving = false
                         when (result) {
                             TagSaveResult.Success -> {
@@ -134,6 +137,49 @@ fun FileActionsHost(menu: MenuState, snackbar: SnackbarHostState) {
             onDismiss = {
                 menu.editTags = null
                 tagError = null
+            },
+        )
+    }
+
+    // --- Dalszöveg ---
+    var lyricsSaving by remember { mutableStateOf(false) }
+    var lyricsError by remember { mutableStateOf<String?>(null) }
+    menu.editLyrics?.let { track ->
+        LyricsEditorDialog(
+            track = track,
+            saving = lyricsSaving,
+            error = lyricsError,
+            onSave = { text ->
+                lyricsError = null
+                withWriteAccess(
+                    track,
+                    forNewFile = false,
+                    denied = { lyricsError = resources.getString(R.string.error_permission_write) },
+                ) {
+                    lyricsSaving = true
+                    scope.launch {
+                        val result = editor.saveLyrics(track, text)
+                        lyricsSaving = false
+                        when (result) {
+                            TagSaveResult.Success -> {
+                                menu.editLyrics = null
+                                notify(resources.getString(R.string.toast_lyrics_saved))
+                            }
+                            is TagSaveResult.Failure -> lyricsError = resources.getString(
+                                when {
+                                    result.reason == "permission" -> R.string.error_permission_write
+                                    !result.restored -> R.string.error_tags_not_restored
+                                    result.reason == "verify" -> R.string.error_tags_verify
+                                    else -> R.string.error_tags_write
+                                },
+                            )
+                        }
+                    }
+                }
+            },
+            onDismiss = {
+                menu.editLyrics = null
+                lyricsError = null
             },
         )
     }
@@ -214,44 +260,53 @@ fun FileActionsHost(menu: MenuState, snackbar: SnackbarHostState) {
         }
     }
 
-    // --- Törlés a telefonról ---
-    fun afterDelete(track: Track, gone: Boolean) {
+    // --- Törlés a telefonról (egy vagy több fájl) ---
+    fun afterDelete(tracks: List<Track>, gone: List<Track>) {
         scope.launch {
-            if (gone) {
-                editor.afterDeleted(track)
-                notify(resources.getString(R.string.toast_file_deleted, track.displayName))
-            } else {
-                notify(resources.getString(R.string.error_delete))
-            }
+            if (gone.isNotEmpty()) editor.afterDeleted(gone)
+            notify(
+                when {
+                    gone.isEmpty() -> resources.getString(R.string.error_delete)
+                    gone.size < tracks.size -> resources.getString(R.string.error_delete_partial, gone.size, tracks.size)
+                    gone.size == 1 -> resources.getString(R.string.toast_file_deleted, gone.first().displayName)
+                    else -> resources.getQuantityString(R.plurals.toast_files_deleted, gone.size, gone.size)
+                },
+            )
         }
     }
-    menu.deleteFile?.let { track ->
+    menu.deleteFiles?.takeIf { it.isNotEmpty() }?.let { tracks ->
+        val single = tracks.singleOrNull()
+        val totalSize = Formatter.formatShortFileSize(context, tracks.sumOf { it.sizeBytes })
         ConfirmDialog(
-            title = stringResource(R.string.delete_file_title),
-            message = stringResource(
-                R.string.delete_file_body,
-                track.displayName,
-                Formatter.formatShortFileSize(context, track.sizeBytes),
-            ),
-            confirmLabel = stringResource(R.string.delete_file_confirm),
+            title = if (single != null) {
+                stringResource(R.string.delete_file_title)
+            } else {
+                pluralStringResource(R.plurals.delete_files_title, tracks.size, tracks.size)
+            },
+            message = if (single != null) {
+                stringResource(R.string.delete_file_body, single.displayName, totalSize)
+            } else {
+                pluralStringResource(R.plurals.delete_files_body, tracks.size, tracks.size, totalSize)
+            },
+            confirmLabel = stringResource(if (single != null) R.string.delete_file_confirm else R.string.delete_files_confirm),
             onConfirm = {
-                menu.deleteFile = null
+                menu.deleteFiles = null
                 if (editor.usesSystemWriteRequest) {
-                    // Android 11+: a rendszer még egyszer rákérdez, és jóváhagyáskor ő maga töröl.
-                    onGranted = { scope.launch { afterDelete(track, editor.isGone(track)) } }
+                    // Android 11+: a rendszer még egyszer rákérdez (egyszer, az összes fájlra), és ő maga töröl.
+                    onGranted = { scope.launch { afterDelete(tracks, tracks.filter { editor.isGone(it) }) } }
                     onDenied = { notify(resources.getString(R.string.error_delete)) }
-                    systemRequest.launch(IntentSenderRequest.Builder(editor.deleteRequest(listOf(track))).build())
+                    systemRequest.launch(IntentSenderRequest.Builder(editor.deleteRequest(tracks)).build())
                 } else {
                     withWriteAccess(
                         null,
                         forNewFile = false,
                         denied = { notify(resources.getString(R.string.error_permission_storage)) },
                     ) {
-                        scope.launch { afterDelete(track, editor.deleteLegacy(track)) }
+                        scope.launch { afterDelete(tracks, tracks.filter { editor.deleteLegacy(it) }) }
                     }
                 }
             },
-            onDismiss = { menu.deleteFile = null },
+            onDismiss = { menu.deleteFiles = null },
         )
     }
 }

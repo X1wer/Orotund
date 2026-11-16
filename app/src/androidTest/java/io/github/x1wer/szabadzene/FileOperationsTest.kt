@@ -243,7 +243,7 @@ class FileOperationsTest {
             trimmedUri = trim.uri
             assertEquals(TrimMode.AAC_REENCODE, trim.mode)
             assertTrue("vágott hossz: ${trim.durationMs}", abs(trim.durationMs - 2_000) <= 400)
-            assertTrue(trim.location.startsWith("Music/SzabadZene/"))
+            assertTrue(trim.location.startsWith("Music/Orotund/"))
             assertFalse(container.fileEditor.isGone(updated))
 
             // 3) Lista és kedvenc, majd törlés: minden helyről eltűnik.

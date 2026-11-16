@@ -82,9 +82,14 @@ class LibraryRepository(
     fun hasPermission(): Boolean = ContextCompat.checkSelfPermission(context, requiredPermission()) ==
         PackageManager.PERMISSION_GRANTED
 
-    /** Ha van engedély, elindítja a beolvasást és a változásfigyelést. */
+    /**
+     * Ha van engedély, elindítja a beolvasást és a változásfigyelést – csak egyszer (utána a figyelő
+     * frissít). Többször is hívható: a felület minden olyan esetben hívja, amikor engedélyt lát (pl. ha a
+     * folyamat engedély nélkül indult, és az engedélyt később a rendszerbeállításokban adták meg).
+     */
     fun start() {
-        if (!hasPermission()) return
+        if (started || !hasPermission()) return
+        started = true
         registerObserver()
         refresh()
     }
@@ -108,6 +113,8 @@ class LibraryRepository(
             }
         }
     }
+
+    private var started = false
 
     private fun registerObserver() {
         if (observerRegistered) return

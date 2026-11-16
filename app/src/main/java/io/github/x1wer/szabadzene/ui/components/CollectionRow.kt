@@ -13,9 +13,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,8 +22,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.x1wer.szabadzene.R
@@ -56,7 +51,8 @@ fun CollectionRow(
         modifier = modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
-            .heightIn(min = TrackRowMinHeight),
+            .heightIn(min = TrackRowMinHeight)
+            .rowDivider(MaterialTheme.colorScheme.outlineVariant),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
@@ -73,7 +69,7 @@ fun CollectionRow(
                     Modifier.size(48.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
+                    Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, size = 32.dp)
                 }
             } else {
                 TrackArtwork(trackId = artworkTrackId, sizePx = 144, modifier = Modifier.size(48.dp))
@@ -96,23 +92,12 @@ fun CollectionRow(
             }
         }
         if (onMenu != null) {
-            Box(
-                modifier = Modifier
-                    .testTag(CollectionRowTags.MENU)
-                    .width(TrackMenuTouchSize)
-                    .fillMaxHeight()
-                    .heightIn(min = TrackMenuTouchSize)
-                    .clickable(role = Role.Button, onClick = onMenu)
-                    .semantics { contentDescription = menuDescription },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.MoreVert,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(26.dp),
-                )
-            }
+            RowMenuArea(
+                description = menuDescription,
+                tag = CollectionRowTags.MENU,
+                highlighted = false,
+                onClick = onMenu,
+            )
         }
     }
 }

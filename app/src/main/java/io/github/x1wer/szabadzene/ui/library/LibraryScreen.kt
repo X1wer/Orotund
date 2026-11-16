@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,17 +25,23 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.Deselect
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Tab
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
+import io.github.x1wer.szabadzene.ui.components.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -45,12 +52,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -58,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
@@ -71,18 +81,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.x1wer.szabadzene.R
 import io.github.x1wer.szabadzene.data.library.LibraryRepository
 import io.github.x1wer.szabadzene.data.library.TrackGroup
+import io.github.x1wer.szabadzene.data.settings.LibraryLayout
+import io.github.x1wer.szabadzene.data.settings.LibrarySection
 import io.github.x1wer.szabadzene.data.settings.LibrarySort
 import io.github.x1wer.szabadzene.data.settings.SortField
 import io.github.x1wer.szabadzene.ui.CollectionMenuRequest
+import io.github.x1wer.szabadzene.ui.LocalAppContainer
 import io.github.x1wer.szabadzene.ui.LocalMenuState
+import io.github.x1wer.szabadzene.ui.formatDuration
 import io.github.x1wer.szabadzene.ui.trackCountText
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 
-private enum class LibraryTab(val label: Int) {
-    TRACKS(R.string.library_tab_tracks),
-    ALBUMS(R.string.library_tab_albums),
-    ARTISTS(R.string.library_tab_artists),
-    GENRES(R.string.library_tab_genres),
-}
+/** A kijelölt azonosítók mentése (képernyőforgatás, folyamat újraindítása). */
+private val IdSetSaver = listSaver<Set<Long>, Long>(save = { it.toList() }, restore = { it.toSet() })
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,6 +121,8 @@ fun LibraryScreen(
             } ?: false
         }
     }
+    // Ha az engedély már megvan (akár a folyamat indulása után kapta meg az app), a beolvasás biztosan elindul.
+    LaunchedEffect(hasPermission) { if (hasPermission) viewModel.onPermissionGranted() }
     // A felhasználó a rendszerbeállításokban is megadhatja az engedélyt: visszatéréskor ellenőrizzük.
     LifecycleResumeEffect(Unit) {
         val now = viewModel.hasPermission()
@@ -117,7 +131,23 @@ fun LibraryScreen(
         onPauseOrDispose { }
     }
 
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    // A látható fülek a beállításból; betöltésig (egy képkocka) nem rajzolunk fület.
+    val container = LocalAppContainer.current
+    val layoutFlow = remember(container) { container?.settings?.libraryLayout ?: flowOf(LibraryLayout()) }
+    val layout by layoutFlow.collectAsStateWithLifecycle(initialValue = null)
+    val sections = layout?.sections
+    var tabName by rememberSaveable { mutableStateOf(LibrarySection.TRACKS.name) }
+    val tab: LibrarySection? = sections?.let { list -> list.firstOrNull { it.name == tabName } ?: list.first() }
+    var tabsDialog by rememberSaveable { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    // A „Zenetár” fejléc lefelé görgetve eltűnik, és csak a lista tetején jön vissza.
+    val topBarBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    LaunchedEffect(tab) {
+        topBarBehavior.state.heightOffset = 0f
+        topBarBehavior.state.contentOffset = 0f
+    }
+
     var searching by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     BackHandler(enabled = searching) {
@@ -125,8 +155,62 @@ fun LibraryScreen(
         query = ""
     }
 
-    Column(Modifier.fillMaxSize()) {
-        if (searching) {
+    // Kijelölő mód a Számok fülön: több szám együttes kezelése.
+    val menu = LocalMenuState.current
+    val sorted by viewModel.sortedTracks.collectAsStateWithLifecycle()
+    val ordered = sorted ?: tracks.orEmpty()
+    var selecting by rememberSaveable { mutableStateOf(false) }
+    var selectedIds by rememberSaveable(stateSaver = IdSetSaver) { mutableStateOf(emptySet<Long>()) }
+    fun exitSelection() {
+        selecting = false
+        selectedIds = emptySet()
+    }
+    BackHandler(enabled = selecting) { exitSelection() }
+    val selectedTracks = remember(ordered, selectedIds) { ordered.filter { it.id in selectedIds } }
+    val selection = TrackSelection(
+        active = selecting,
+        selectedIds = selectedIds,
+        onToggle = { track -> selectedIds = if (track.id in selectedIds) selectedIds - track.id else selectedIds + track.id },
+        onStart = { track ->
+            selecting = true
+            selectedIds = setOf(track.id)
+        },
+    )
+    val selectionTitle = pluralStringResource(R.plurals.selection_count, selectedTracks.size, selectedTracks.size)
+    val showTopBar = !selecting && !searching
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .then(if (showTopBar) Modifier.nestedScroll(topBarBehavior.nestedScrollConnection) else Modifier),
+    ) {
+        if (selecting && !searching) {
+            SelectionTopBar(
+                title = selectionTitle,
+                count = selectedTracks.size,
+                allSelected = ordered.isNotEmpty() && selectedTracks.size == ordered.size,
+                onClose = ::exitSelection,
+                onToggleAll = {
+                    selectedIds = if (selectedTracks.size == ordered.size) emptySet() else ordered.map { it.id }.toSet()
+                },
+                onPlay = {
+                    container?.player?.playTracks(selectedTracks, 0)
+                    exitSelection()
+                },
+                onMore = {
+                    menu.openCollection(
+                        CollectionMenuRequest(
+                            title = selectionTitle,
+                            subtitle = formatDuration(selectedTracks.sumOf { it.durationMs }),
+                            artworkTrackId = selectedTracks.firstOrNull()?.id,
+                            tracks = selectedTracks,
+                            selectionActions = true,
+                            onFinished = ::exitSelection,
+                        ),
+                    )
+                },
+            )
+        } else if (searching) {
             SearchBarRow(
                 query = query,
                 onQueryChange = { query = it },
@@ -137,6 +221,8 @@ fun LibraryScreen(
             )
         } else {
             TopAppBar(
+                scrollBehavior = topBarBehavior,
+                modifier = Modifier.testTag("library_top_bar"),
                 title = {
                     Column {
                         Text(stringResource(R.string.library_title))
@@ -151,12 +237,18 @@ fun LibraryScreen(
                     }
                 },
                 actions = {
-                    if (hasPermission) {
-                        IconButton(onClick = { searching = true }, modifier = Modifier.testTag("search_open")) {
+                    // A Számok fülön a keresőmező a lista tetején van; a többi fülön itt indítható.
+                    if (hasPermission && tab == LibrarySection.TRACKS) {
+                        IconButton(onClick = { selecting = true }, modifier = Modifier.testTag("select_mode")) {
+                            Icon(Icons.Rounded.Checklist, contentDescription = stringResource(R.string.action_select))
+                        }
+                        SortMenu(viewModel)
+                    } else if (hasPermission && tab != null) {
+                        IconButton(onClick = { searching = true }, modifier = Modifier.testTag("search_open_top")) {
                             Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.cd_search))
                         }
-                        if (tab == LibraryTab.TRACKS.ordinal) SortMenu(viewModel)
                     }
+                    LibraryOverflowMenu(onTabs = { tabsDialog = true })
                 },
             )
         }
@@ -178,31 +270,96 @@ fun LibraryScreen(
                 body = stringResource(R.string.library_empty_body),
             )
             searching -> SearchResults(viewModel, query, currentMediaId, contentPadding)
+            sections == null || tab == null -> Unit
             else -> {
-                PrimaryScrollableTabRow(selectedTabIndex = tab, edgePadding = 8.dp) {
-                    LibraryTab.entries.forEach { entry ->
-                        Tab(
-                            selected = tab == entry.ordinal,
-                            onClick = { tab = entry.ordinal },
-                            text = { Text(stringResource(entry.label)) },
-                            modifier = Modifier
-                                .testTag("library_tab_${entry.name.lowercase()}")
-                                .heightIn(min = 48.dp),
-                        )
+                // Egyetlen látható fülnél a fülsáv el is tűnik.
+                if (sections.size > 1) {
+                    PrimaryScrollableTabRow(
+                        selectedTabIndex = sections.indexOf(tab),
+                        edgePadding = 8.dp,
+                        modifier = Modifier.testTag("library_tab_row"),
+                    ) {
+                        sections.forEach { entry ->
+                            Tab(
+                                selected = tab == entry,
+                                onClick = {
+                                    if (tab != entry) exitSelection()
+                                    tabName = entry.name
+                                },
+                                text = { Text(stringResource(sectionLabel(entry))) },
+                                modifier = Modifier
+                                    .testTag("library_tab_${entry.name.lowercase()}")
+                                    .heightIn(min = 48.dp),
+                            )
+                        }
                     }
                 }
                 Box(Modifier.weight(1f)) {
-                    when (LibraryTab.entries[tab]) {
-                        LibraryTab.TRACKS -> {
-                            val sorted by viewModel.sortedTracks.collectAsStateWithLifecycle()
-                            TrackList(sorted ?: list, currentMediaId, contentPadding)
+                    when (tab) {
+                        LibrarySection.TRACKS -> {
+                            val shown = sorted ?: list
+                            TrackList(
+                                tracks = shown,
+                                currentMediaId = currentMediaId,
+                                contentPadding = contentPadding,
+                                header = {
+                                    item(key = "search") {
+                                        SearchPillRow(
+                                            count = list.size,
+                                            tracks = shown,
+                                            onSearch = {
+                                                exitSelection()
+                                                searching = true
+                                            },
+                                        )
+                                    }
+                                },
+                                selection = selection,
+                            )
                         }
-                        LibraryTab.ALBUMS -> GroupTab(viewModel, CollectionType.ALBUM, contentPadding, onOpenCollection)
-                        LibraryTab.ARTISTS -> GroupTab(viewModel, CollectionType.ARTIST, contentPadding, onOpenCollection)
-                        LibraryTab.GENRES -> GroupTab(viewModel, CollectionType.GENRE, contentPadding, onOpenCollection)
+                        LibrarySection.ALBUMS -> GroupTab(viewModel, CollectionType.ALBUM, contentPadding, onOpenCollection)
+                        LibrarySection.ARTISTS -> GroupTab(viewModel, CollectionType.ARTIST, contentPadding, onOpenCollection)
+                        LibrarySection.GENRES -> GroupTab(viewModel, CollectionType.GENRE, contentPadding, onOpenCollection)
                     }
                 }
             }
+        }
+    }
+
+    val shownSections = sections
+    if (tabsDialog && shownSections != null) {
+        LibraryTabsDialog(
+            current = shownSections,
+            onSave = { chosen ->
+                tabsDialog = false
+                if (tab !in chosen) exitSelection()
+                scope.launch { container?.settings?.setLibrarySections(chosen) }
+            },
+            onDismiss = { tabsDialog = false },
+        )
+    }
+}
+
+/** A zenetár fejlécének ⋮ menüje: a látható fülek beállítása. */
+@Composable
+private fun LibraryOverflowMenu(onTabs: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }, modifier = Modifier.testTag("library_more")) {
+            Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.action_more))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.settings_library_tabs)) },
+                leadingIcon = { Icon(Icons.Rounded.Tab, contentDescription = null) },
+                onClick = {
+                    open = false
+                    onTabs()
+                },
+                modifier = Modifier
+                    .testTag("library_tabs_open")
+                    .heightIn(min = 56.dp),
+            )
         }
     }
 }
@@ -270,6 +427,86 @@ private fun SearchResults(
     }
 }
 
+/** A számlista tetején a keresőmező („Dalok keresése (1190)”), mellette a Lejátszás és a Keverés ikongomb. */
+@Composable
+private fun SearchPillRow(
+    count: Int,
+    tracks: List<io.github.x1wer.szabadzene.data.library.Track>,
+    onSearch: () -> Unit,
+) {
+    androidx.compose.foundation.layout.Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+    ) {
+        Surface(
+            onClick = onSearch,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 48.dp)
+                .testTag("search_open"),
+        ) {
+            androidx.compose.foundation.layout.Row(
+                Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Rounded.Search, contentDescription = null)
+                Spacer(Modifier.size(12.dp))
+                Text(
+                    stringResource(R.string.search_tracks_hint, count),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
+        }
+        PlayShuffleIconButtons(tracks)
+    }
+}
+
+/** Kijelölő módban a felső sáv: bezárás, darabszám, mind kijelölése, lejátszás, további műveletek. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SelectionTopBar(
+    title: String,
+    count: Int,
+    allSelected: Boolean,
+    onClose: () -> Unit,
+    onToggleAll: () -> Unit,
+    onPlay: () -> Unit,
+    onMore: () -> Unit,
+) {
+    TopAppBar(
+        modifier = Modifier.testTag("selection_bar"),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        navigationIcon = {
+            IconButton(onClick = onClose, modifier = Modifier.testTag("selection_close")) {
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close_selection))
+            }
+        },
+        title = { Text(title, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+        actions = {
+            IconButton(onClick = onToggleAll, modifier = Modifier.testTag("selection_all")) {
+                Icon(
+                    if (allSelected) Icons.Rounded.Deselect else Icons.Rounded.SelectAll,
+                    contentDescription = stringResource(if (allSelected) R.string.action_clear_selection else R.string.action_select_all),
+                )
+            }
+            IconButton(onClick = onPlay, enabled = count > 0, modifier = Modifier.testTag("selection_play")) {
+                Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.action_play))
+            }
+            IconButton(onClick = onMore, enabled = count > 0, modifier = Modifier.testTag("selection_more")) {
+                Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.action_more))
+            }
+        },
+    )
+}
+
 @Composable
 private fun SortMenu(viewModel: LibraryViewModel) {
     val sort by viewModel.sort.collectAsStateWithLifecycle()
@@ -288,7 +525,8 @@ private fun SortMenu(viewModel: LibraryViewModel) {
                 DropdownMenuItem(
                     text = { Text(stringResource(label)) },
                     onClick = {
-                        viewModel.setSort(sort.copy(field = field))
+                        // Mezőváltáskor a természetes irány (dátumnál a legújabb elöl); ugyanarra koppintva marad.
+                        viewModel.setSort(if (sort.field == field) sort else LibrarySort.naturalFor(field))
                         open = false
                     },
                     trailingIcon = { if (sort.field == field) Icon(Icons.Rounded.Check, contentDescription = null) },
@@ -343,6 +581,7 @@ private fun GroupTab(
                     subtitle = resources.getQuantityString(R.plurals.track_count, group.tracks.size, group.tracks.size),
                     artworkTrackId = group.artworkTrackId,
                     tracks = group.tracks,
+                    playlistName = group.name ?: unknown,
                 ),
             )
         },

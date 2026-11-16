@@ -1,6 +1,7 @@
 package io.github.x1wer.szabadzene.ui.player
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -17,12 +18,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.x1wer.szabadzene.R
@@ -30,7 +37,6 @@ import io.github.x1wer.szabadzene.data.settings.SkipSettings
 import io.github.x1wer.szabadzene.playback.PlaybackUiState
 import io.github.x1wer.szabadzene.playback.SkipDirection
 import io.github.x1wer.szabadzene.ui.components.CompactSkipButton
-import io.github.x1wer.szabadzene.ui.components.SkipButton
 import io.github.x1wer.szabadzene.ui.components.TrackArtwork
 
 object MiniPlayerTags {
@@ -38,9 +44,15 @@ object MiniPlayerTags {
     const val BODY = "mini_player_body"
 }
 
+/** Ekkora vízszintes húzás vált számot a minilejátszó törzsén. */
+private val SwipeThreshold = 56.dp
+
 /**
- * Az alsó minilejátszó. A két ugrógomb itt is közvetlenül elérhető: széles kijelzőn és normál
- * betűméretnél egy sorban, egyébként kétsoros elrendezésben, teljes méretű gombokkal.
+ * Az alsó minilejátszó: borító, cím, előadó, a következő szám, a várólista sorszáma, valamint
+ * a vezérlők (−N mp, előző, lejátszás/szünet, következő, +N mp). Az ugrógombok mindig közvetlenül
+ * elérhetők, legalább 56 × 56 dp-sek. Széles kijelzőn egy sor, egyébként kétsoros elrendezés
+ * (felül a szám adatai, alul a gombok). A törzsre koppintva a teljes lejátszó nyílik meg;
+ * vízszintes húzással (balra: következő, jobbra: előző) számot lehet váltani.
  */
 @Composable
 fun MiniPlayerContent(
@@ -59,7 +71,7 @@ fun MiniPlayerContent(
     ) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val fontScale = LocalDensity.current.fontScale
-            val singleRow = maxWidth >= 360.dp && fontScale <= 1.15f
+            val singleRow = maxWidth >= 600.dp && fontScale <= 1.3f
             Column(Modifier.fillMaxWidth()) {
                 val fraction = if (state.durationMs > 0) {
                     (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
@@ -81,90 +93,114 @@ fun MiniPlayerContent(
                             .padding(end = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        MiniBody(state, onOpen, Modifier.weight(1f))
-                        CompactSkipButton(
-                            direction = SkipDirection.BACK,
-                            seconds = skip.backSeconds,
-                            enabled = state.canSeek,
-                            onClick = { callbacks.onSkip(SkipDirection.BACK) },
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        PlayPauseButton(
-                            isPlaying = state.playWhenReady,
-                            enabled = state.hasMedia,
-                            onClick = callbacks.onPlayPause,
-                            size = 56,
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        CompactSkipButton(
-                            direction = SkipDirection.FORWARD,
-                            seconds = skip.forwardSeconds,
-                            enabled = state.canSeek,
-                            onClick = { callbacks.onSkip(SkipDirection.FORWARD) },
-                        )
+                        MiniBody(state, callbacks, onOpen, Modifier.weight(1f))
+                        MiniControls(state, skip, callbacks, Modifier.width(320.dp))
+                        callbacks.onOpenQueue?.let { QueuePositionButton(state, it) }
                     }
                 } else {
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 64.dp)
-                            .padding(end = 8.dp),
+                            .padding(end = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        MiniBody(state, onOpen, Modifier.weight(1f))
-                        PlayPauseButton(
-                            isPlaying = state.playWhenReady,
-                            enabled = state.hasMedia,
-                            onClick = callbacks.onPlayPause,
-                            size = 56,
-                        )
+                        MiniBody(state, callbacks, onOpen, Modifier.weight(1f))
+                        callbacks.onOpenQueue?.let { QueuePositionButton(state, it) }
                     }
-                    Row(
+                    MiniControls(
+                        state,
+                        skip,
+                        callbacks,
                         Modifier
                             .fillMaxWidth()
-                            .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        val showIcon = fontScale < 1.5f
-                        SkipButton(
-                            direction = SkipDirection.BACK,
-                            seconds = skip.backSeconds,
-                            enabled = state.canSeek,
-                            onClick = { callbacks.onSkip(SkipDirection.BACK) },
-                            showIcon = showIcon,
-                            modifier = Modifier.weight(1f),
-                        )
-                        SkipButton(
-                            direction = SkipDirection.FORWARD,
-                            seconds = skip.forwardSeconds,
-                            enabled = state.canSeek,
-                            onClick = { callbacks.onSkip(SkipDirection.FORWARD) },
-                            showIcon = showIcon,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+                            .padding(start = 8.dp, end = 8.dp, bottom = 6.dp),
+                    )
                 }
             }
         }
     }
 }
 
-/** A minilejátszó törzse: koppintásra a teljes lejátszó nyílik meg. */
+/** −N mp, előző, lejátszás/szünet, következő, +N mp – egyenletesen elosztva. */
 @Composable
-private fun MiniBody(state: PlaybackUiState, onOpen: () -> Unit, modifier: Modifier) {
+private fun MiniControls(
+    state: PlaybackUiState,
+    skip: SkipSettings,
+    callbacks: PlayerCallbacks,
+    modifier: Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CompactSkipButton(
+            direction = SkipDirection.BACK,
+            seconds = skip.backSeconds,
+            enabled = state.canSeek,
+            onClick = { callbacks.onSkip(SkipDirection.BACK) },
+        )
+        PreviousButton(state, callbacks.onPrevious, size = 48.dp)
+        PlayPauseButton(
+            isPlaying = state.playWhenReady,
+            enabled = state.hasMedia,
+            onClick = callbacks.onPlayPause,
+            size = 56,
+        )
+        NextButton(state, callbacks.onNext, size = 48.dp)
+        CompactSkipButton(
+            direction = SkipDirection.FORWARD,
+            seconds = skip.forwardSeconds,
+            enabled = state.canSeek,
+            onClick = { callbacks.onSkip(SkipDirection.FORWARD) },
+        )
+    }
+}
+
+/** A minilejátszó törzse: koppintásra a teljes lejátszó, vízszintes húzásra számváltás. */
+@Composable
+private fun MiniBody(state: PlaybackUiState, callbacks: PlayerCallbacks, onOpen: () -> Unit, modifier: Modifier) {
+    val density = LocalDensity.current
+    val threshold = with(density) { SwipeThreshold.toPx() }
+    val onNext by rememberUpdatedState(callbacks.onNext)
+    val onPrevious by rememberUpdatedState(callbacks.onPrevious)
+    val hasNext by rememberUpdatedState(state.hasNext)
+    val nextLabel = stringResource(R.string.cd_next)
+    val previousLabel = stringResource(R.string.cd_previous)
     Row(
         modifier = modifier
             .testTag(MiniPlayerTags.BODY)
             .heightIn(min = 64.dp)
+            .pointerInput(Unit) {
+                var total = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { total = 0f },
+                    onDragEnd = {
+                        when {
+                            total <= -threshold && hasNext -> onNext()
+                            total >= threshold -> onPrevious()
+                        }
+                    },
+                ) { change, dragAmount ->
+                    change.consume()
+                    total += dragAmount
+                }
+            }
             .clickable(
                 onClickLabel = stringResource(R.string.cd_open_player),
                 role = Role.Button,
                 onClick = onOpen,
             )
-            .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            .semantics {
+                customActions = listOf(
+                    CustomAccessibilityAction(nextLabel) { onNext(); true },
+                    CustomAccessibilityAction(previousLabel) { onPrevious(); true },
+                )
+            }
+            .padding(start = 12.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TrackArtwork(trackId = state.trackId, sizePx = 144, modifier = Modifier.size(44.dp))
+        TrackArtwork(trackId = state.trackId, sizePx = 144, modifier = Modifier.size(48.dp))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
@@ -180,6 +216,16 @@ private fun MiniBody(state: PlaybackUiState, onOpen: () -> Unit, modifier: Modif
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            // Nagyon nagy betűnél a következő szám sora elmarad, hogy a lista is látsszon.
+            state.nextTitle?.takeIf { density.fontScale < 1.5f }?.let { next ->
+                Text(
+                    text = stringResource(R.string.next_up, next),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
