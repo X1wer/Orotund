@@ -52,6 +52,8 @@ import io.github.x1wer.szabadzene.R
 import io.github.x1wer.szabadzene.data.library.Track
 import io.github.x1wer.szabadzene.data.library.TrackGroup
 import io.github.x1wer.szabadzene.ui.LocalAppContainer
+import io.github.x1wer.szabadzene.ui.LocalPlaybackOrigin
+import io.github.x1wer.szabadzene.ui.recordPlaybackOrigin
 import io.github.x1wer.szabadzene.ui.LocalMenuState
 import io.github.x1wer.szabadzene.ui.TrackMenuContext
 import io.github.x1wer.szabadzene.ui.components.CollectionRow
@@ -87,6 +89,7 @@ fun TrackList(
 ) {
     val container = LocalAppContainer.current
     val menu = LocalMenuState.current
+    val origin = LocalPlaybackOrigin.current
     val unknownArtist = stringResource(R.string.unknown_artist)
     LazyColumn(
         modifier = modifier
@@ -104,7 +107,12 @@ fun TrackList(
                 trackId = track.id,
                 isCurrent = track.id.toString() == currentMediaId,
                 onPlay = {
-                    if (selecting) selection?.onToggle(track) else container?.player?.playTracks(tracks, index)
+                    if (selecting) {
+                        selection?.onToggle(track)
+                    } else {
+                        container?.recordPlaybackOrigin(origin)
+                        container?.player?.playTracks(tracks, index)
+                    }
                 },
                 onMenu = { menu.open(track, TrackMenuContext.Library) },
                 onLongPress = selection?.let { s -> { if (s.active) s.onToggle(track) else s.onStart(track) } },
@@ -173,7 +181,9 @@ fun rememberPlayAll(): (tracks: List<Track>, shuffle: Boolean) -> Unit {
     val resources = LocalResources.current
     val prefsFlow = remember(container) { container?.settings?.playback ?: flowOf(PlaybackPrefs()) }
     val prefs by prefsFlow.collectAsStateWithLifecycle(PlaybackPrefs())
+    val origin = LocalPlaybackOrigin.current
     return { tracks, shuffle ->
+        container?.recordPlaybackOrigin(origin)
         val keepCurrent = prefs.playButtons == PlayButtonMode.AFTER_CURRENT
         val kept = container?.player?.playAll(tracks, shuffle, keepCurrent) == true
         if (kept && snackbar != null) {

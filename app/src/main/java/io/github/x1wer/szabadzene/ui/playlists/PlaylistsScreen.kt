@@ -44,6 +44,8 @@ import io.github.x1wer.szabadzene.data.playlists.PlaylistItem
 import io.github.x1wer.szabadzene.ui.CollectionMenuRequest
 import io.github.x1wer.szabadzene.ui.LocalAppContainer
 import io.github.x1wer.szabadzene.ui.LocalMenuState
+import io.github.x1wer.szabadzene.ui.PlaybackOrigin
+import io.github.x1wer.szabadzene.ui.recordPlaybackOrigin
 import io.github.x1wer.szabadzene.ui.TrackMenuContext
 import io.github.x1wer.szabadzene.ui.components.CollectionRow
 import io.github.x1wer.szabadzene.ui.components.ConfirmDialog
@@ -225,7 +227,7 @@ fun PlaylistsScreen(
                     onOpen = { onOpenPlaylist(FAVORITES_ID) },
                     onMenu = {
                         menu.openCollection(
-                            CollectionMenuRequest(favoritesTitle, "", favorites.firstOrNull()?.id, favorites),
+                            CollectionMenuRequest(favoritesTitle, "", favorites.firstOrNull()?.id, favorites, origin = PlaybackOrigin.playlist(FAVORITES_ID)),
                         )
                     },
                     modifier = Modifier.testTag("favorites_row"),
@@ -239,7 +241,7 @@ fun PlaylistsScreen(
                     icon = Icons.AutoMirrored.Rounded.TrendingUp,
                     onOpen = { onOpenPlaylist(MOST_PLAYED_ID) },
                     onMenu = {
-                        menu.openCollection(CollectionMenuRequest(mostPlayedTitle, "", list.firstOrNull()?.id, list, mostPlayedActions))
+                        menu.openCollection(CollectionMenuRequest(mostPlayedTitle, "", list.firstOrNull()?.id, list, mostPlayedActions, origin = PlaybackOrigin.playlist(MOST_PLAYED_ID)))
                     },
                     modifier = Modifier.testTag("most_played_row"),
                 )
@@ -253,7 +255,7 @@ fun PlaylistsScreen(
                     icon = Icons.Rounded.History,
                     onOpen = { onOpenPlaylist(RECENTLY_PLAYED_ID) },
                     onMenu = {
-                        menu.openCollection(CollectionMenuRequest(recentTitle, "", list.firstOrNull()?.id, list, recentActions))
+                        menu.openCollection(CollectionMenuRequest(recentTitle, "", list.firstOrNull()?.id, list, recentActions, origin = PlaybackOrigin.playlist(RECENTLY_PLAYED_ID)))
                     },
                     modifier = Modifier.testTag("recently_played_row"),
                 )
@@ -271,6 +273,7 @@ fun PlaylistsScreen(
                                     subtitle = "",
                                     artworkTrackId = items.firstOrNull()?.track?.id,
                                     tracks = items.map { it.track },
+                                    origin = PlaybackOrigin.playlist(playlist.id),
                                     extraActions = listOf(
                                         TrackAction(renameLabel, Icons.Rounded.DriveFileRenameOutline, "action_rename") {
                                             dialog = PlaylistDialog.Rename(playlist.id, playlist.name)
@@ -400,7 +403,7 @@ fun PlaylistDetailScreen(
                                 },
                             )
                         }
-                        menu.openCollection(CollectionMenuRequest(title, "", tracks.firstOrNull()?.id, tracks, extra))
+                        menu.openCollection(CollectionMenuRequest(title, "", tracks.firstOrNull()?.id, tracks, extra, origin = PlaybackOrigin.playlist(playlistId)))
                     },
                     modifier = Modifier.testTag("collection_menu"),
                 ) {
@@ -458,7 +461,10 @@ fun PlaylistDetailScreen(
                     subtitle = item.track.artist ?: unknownArtist,
                     trackId = item.track.id,
                     isCurrent = item.track.id.toString() == currentMediaId,
-                    onPlay = { container.player.playTracks(tracks, index) },
+                    onPlay = {
+                        container.recordPlaybackOrigin(PlaybackOrigin.playlist(playlistId))
+                        container.player.playTracks(tracks, index)
+                    },
                     onMenu = { menu.open(item.track, TrackMenuContext.Playlist(playlistId, item.entryId)) },
                     leading = { DragHandle(handle, enabled = true) },
                 )

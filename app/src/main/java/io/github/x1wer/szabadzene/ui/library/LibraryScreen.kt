@@ -88,6 +88,8 @@ import io.github.x1wer.szabadzene.data.settings.SortField
 import io.github.x1wer.szabadzene.ui.CollectionMenuRequest
 import io.github.x1wer.szabadzene.ui.LocalAppContainer
 import io.github.x1wer.szabadzene.ui.LocalMenuState
+import io.github.x1wer.szabadzene.ui.PlaybackOrigin
+import io.github.x1wer.szabadzene.ui.recordPlaybackOrigin
 import io.github.x1wer.szabadzene.ui.formatDuration
 import io.github.x1wer.szabadzene.ui.trackCountText
 import kotlinx.coroutines.flow.flowOf
@@ -194,6 +196,7 @@ fun LibraryScreen(
                     selectedIds = if (selectedTracks.size == ordered.size) emptySet() else ordered.map { it.id }.toSet()
                 },
                 onPlay = {
+                    container?.recordPlaybackOrigin(PlaybackOrigin.LIBRARY)
                     container?.player?.playTracks(selectedTracks, 0)
                     exitSelection()
                 },
@@ -206,6 +209,7 @@ fun LibraryScreen(
                             tracks = selectedTracks,
                             selectionActions = true,
                             onFinished = ::exitSelection,
+                            origin = PlaybackOrigin.LIBRARY,
                         ),
                     )
                 },
@@ -582,6 +586,7 @@ private fun GroupTab(
                     artworkTrackId = group.artworkTrackId,
                     tracks = group.tracks,
                     playlistName = group.name ?: unknown,
+                    origin = PlaybackOrigin.collection(type, group.key),
                 ),
             )
         },

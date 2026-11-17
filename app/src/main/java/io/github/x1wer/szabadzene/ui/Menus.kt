@@ -79,6 +79,8 @@ data class CollectionMenuRequest(
     val onFinished: (() -> Unit)? = null,
     /** Ha nem null: „Mentés új listaként” ezzel a névvel (album, előadó, műfaj, mappa). */
     val playlistName: String? = null,
+    /** A gyűjtemény képernyője: a menüből indított lejátszás ezt jegyzi meg (null = nem változik). */
+    val origin: PlaybackOrigin? = null,
 )
 
 /** A menük közös állapota: bármelyik képernyő megnyithatja, a megjelenítés egy helyen történik. */
@@ -262,9 +264,11 @@ fun MenuHost(menu: MenuState, snackbar: SnackbarHostState) {
         val tracks = request.tracks
         val actions = buildList {
             add(TrackAction(stringResource(R.string.action_play), Icons.Rounded.PlayArrow, "action_play_all") {
+                request.origin?.let(container::recordPlaybackOrigin)
                 container.player.playTracks(tracks, 0)
             })
             add(TrackAction(stringResource(R.string.action_shuffle), Icons.Rounded.Shuffle, "action_shuffle_all") {
+                request.origin?.let(container::recordPlaybackOrigin)
                 container.player.playShuffled(tracks)
             })
             add(TrackAction(stringResource(R.string.action_play_next), Icons.Rounded.QueuePlayNext, "action_play_next") {

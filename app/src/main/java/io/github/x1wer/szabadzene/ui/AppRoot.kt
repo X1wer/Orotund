@@ -83,6 +83,9 @@ import io.github.x1wer.szabadzene.ui.settings.SettingsScreen
 import io.github.x1wer.szabadzene.ui.sound.EqualizerScreen
 import io.github.x1wer.szabadzene.ui.theme.LocalIconScale
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /** Az alkalmazás összetevői a felület számára. Tesztben null lehet. */
@@ -111,7 +114,7 @@ private val tabs = listOf(
 )
 
 @Composable
-fun AppRoot(openPlayerRequests: StateFlow<Int>) {
+fun AppRoot(openPlayerRequests: StateFlow<Int>, openOriginRequests: StateFlow<Int> = MutableStateFlow(0)) {
     val container = LocalAppContainer.current ?: return
     val nav = rememberNavController()
     val snackbar = remember { SnackbarHostState() }
@@ -178,6 +181,13 @@ fun AppRoot(openPlayerRequests: StateFlow<Int>) {
             nav.navigate(ROUTE_PLAYER) { launchSingleTop = true }
         }
     }
+    // A widgetre koppintva: a lejátszás forrása (lista, gyűjtemény vagy a Zenetár) nyílik meg a fő képernyőn.
+    val originRequest by openOriginRequests.collectAsState()
+    LaunchedEffect(originRequest) {
+        if (originRequest > 0 && nav.currentDestination?.route != ROUTE_MAIN) {
+            nav.popBackStack(ROUTE_MAIN, inclusive = false)
+        }
+    }
 
     LaunchedEffect(container, resources) {
         container.player.events.collect { event ->
@@ -204,6 +214,7 @@ fun AppRoot(openPlayerRequests: StateFlow<Int>) {
                     skip = skip,
                     callbacks = callbacks,
                     snackbar = snackbar,
+                    originRequest = originRequest,
                     onOpenPlayer = { nav.navigate(ROUTE_PLAYER) { launchSingleTop = true } },
                     onOpenEqualizer = { nav.navigate(ROUTE_EQUALIZER) { launchSingleTop = true } },
                 )
@@ -268,9 +279,6 @@ fun AppRoot(openPlayerRequests: StateFlow<Int>) {
     }
 }
 
-private fun collectionRoute(prefix: String, type: CollectionType, key: String) =
-    "$prefix/collection/${type.name}/${Uri.encode(key)}"
-
 @Composable
 private fun MainScaffold(
     libraryViewModel: LibraryViewModel,
@@ -278,6 +286,7 @@ private fun MainScaffold(
     skip: SkipSettings,
     callbacks: PlayerCallbacks,
     snackbar: SnackbarHostState,
+    originRequest: Int,
     onOpenPlayer: () -> Unit,
     onOpenEqualizer: () -> Unit,
 ) {
@@ -289,6 +298,24 @@ private fun MainScaffold(
     val navs = listOf(libraryNav, playlistsNav, foldersNav, settingsNav)
     val pager = rememberPagerState { tabs.size }
     val scope = rememberCoroutineScope()
+
+    // A widget kérésére a lejátszás forrása: a fül, és azon belül (ha van) a lista vagy gyűjtemény képernyője.
+    val originContainer = LocalAppContainer.current
+    LaunchedEffect(originRequest) {
+        if (originRequest <= 0) return@LaunchedEffect
+        val origin = PlaybackOrigin.decode(originContainer?.settings?.playbackOrigin?.first()) ?: return@LaunchedEffect
+        pager.scrollToPage(origin.tab)
+        val tabNav = navs[origin.tab]
+        // Hidegindításkor a fül NavHost-ja egy-két képkocka múlva kapja meg a gráfot.
+        repeat(40) {
+            if (runCatching { tabNav.graph }.isSuccess) return@repeat
+            delay(50)
+        }
+        runCatching {
+            tabNav.popBackStack(tabNav.graph.findStartDestination().id, inclusive = false)
+            origin.route?.let { tabNav.navigate(it) { launchSingleTop = true } }
+        }
+    }
 
     // A fül gyökerén a Vissza gomb az első fülre visz (a fülek saját visszalépése ennél erősebb).
     BackHandler(enabled = pager.currentPage != 0) { scope.launch { pager.animateScrollToPage(0) } }
@@ -371,12 +398,14 @@ private fun MainScaffold(
                 when (page) {
                     0 -> NavHost(libraryNav, startDestination = "library", modifier = Modifier.fillMaxSize()) {
                         composable("library") {
+                            CompositionLocalProvider(LocalPlaybackOrigin provides PlaybackOrigin.LIBRARY) {
                             LibraryScreen(
                                 viewModel = libraryViewModel,
                                 currentMediaId = current,
                                 contentPadding = inner,
                                 onOpenCollection = { type, key -> libraryNav.navigate(collectionRoute("library", type, key)) },
                             )
+                            }
                         }
                         collectionDestination("library", libraryViewModel, current, inner, libraryNav)
                     }
@@ -385,20 +414,23 @@ private fun MainScaffold(
                             PlaylistsScreen(
                                 viewModel = libraryViewModel,
                                 contentPadding = inner,
-                                onOpenPlaylist = { id -> playlistsNav.navigate("playlists/playlist/$id") },
+                                onOpenPlaylist = { id -> playlistsNav.navigate(playlistRoute(id)) },
                             )
                         }
                         composable(
                             "playlists/playlist/{id}",
                             arguments = listOf(navArgument("id") { type = NavType.LongType }),
                         ) { entry ->
-                            PlaylistDetailScreen(
-                                viewModel = libraryViewModel,
-                                playlistId = entry.arguments?.getLong("id") ?: 0L,
-                                currentMediaId = current,
-                                contentPadding = inner,
-                                onBack = { playlistsNav.popBackStack() },
-                            )
+                            val playlistId = entry.arguments?.getLong("id") ?: 0L
+                            CompositionLocalProvider(LocalPlaybackOrigin provides PlaybackOrigin.playlist(playlistId)) {
+                                PlaylistDetailScreen(
+                                    viewModel = libraryViewModel,
+                                    playlistId = playlistId,
+                                    currentMediaId = current,
+                                    contentPadding = inner,
+                                    onBack = { playlistsNav.popBackStack() },
+                                )
+                            }
                         }
                     }
                     2 -> NavHost(foldersNav, startDestination = "folders", modifier = Modifier.fillMaxSize()) {
@@ -446,13 +478,15 @@ private fun androidx.navigation.NavGraphBuilder.collectionDestination(
     ) { entry ->
         val type = CollectionType.valueOf(entry.arguments?.getString("type") ?: CollectionType.ALBUM.name)
         val key = Uri.decode(entry.arguments?.getString("key").orEmpty())
-        CollectionDetailScreen(
-            viewModel = viewModel,
-            type = type,
-            key = key,
-            currentMediaId = currentMediaId,
-            contentPadding = contentPadding,
-            onBack = { tabNav.popBackStack() },
-        )
+        CompositionLocalProvider(LocalPlaybackOrigin provides PlaybackOrigin.collection(type, key)) {
+            CollectionDetailScreen(
+                viewModel = viewModel,
+                type = type,
+                key = key,
+                currentMediaId = currentMediaId,
+                contentPadding = contentPadding,
+                onBack = { tabNav.popBackStack() },
+            )
+        }
     }
 }

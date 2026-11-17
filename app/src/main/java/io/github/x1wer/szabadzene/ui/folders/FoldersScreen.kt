@@ -80,6 +80,7 @@ fun FoldersScreen(
                             artworkTrackId = group.artworkTrackId,
                             tracks = group.tracks,
                             playlistName = group.name ?: unknown,
+                            origin = io.github.x1wer.szabadzene.ui.PlaybackOrigin.collection(CollectionType.FOLDER, group.key),
                             extraActions = listOf(
                                 TrackAction(excludeLabel, Icons.Rounded.FolderOff, "action_exclude_folder") {
                                     scope.launch { container?.settings?.excludeFolder(group.key) }

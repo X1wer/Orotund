@@ -564,3 +564,14 @@ A kiolvasott adatok (CSV, .m3u8) személyesek, a projekten kívül maradnak.
 - Tesztek: JVM 156/156 (új: CSV oda-vissza), műszeres 48/48 `Clean_API_37`-en (új: `UserDataTransferTest` 2 –
   kedvencek és lejátszásszámok export → import a valódi zenetárral; az importmenü elemei), lint 0 hiba. Kézzel:
   a „Mentés másként” ablakon át mindkét export létrehozza a fájlt.
+
+### 1.6.1 (2026-11-17) – a widget a lejátszás forrását nyitja meg
+- A widgetre koppintva nem a teljes lejátszó nyílik, hanem az a képernyő, ahonnan a lejátszás indult: a lejátszási
+  lista (a Kedvencek, a Legtöbbet és a Nemrég játszott is), az album/előadó/műfaj, a mappa, vagy a Zenetár.
+  Ha a lejátszó nyitva volt, bezárul. Az értesítés továbbra is a lejátszót nyitja.
+- Megvalósítás: `ui/PlaybackOrigin.kt` (fül + útvonal, `LocalPlaybackOrigin` képernyőnként az AppRoot-ban; a
+  lejátszást indító helyek – számsor, Lejátszás/Keverés, kijelölés, gyűjteménymenü – a beállításba írják:
+  `playback_origin`), `MainActivity.EXTRA_OPEN_ORIGIN`, a widget ezt küldi.
+- Tesztek: JVM 158/158 (új: `PlaybackOriginTest` 2), műszeres 50/50 `Clean_API_37`-en (új: `WidgetOpensOriginTest`
+  2), lint 0 hiba; kézzel: albumból indított lejátszás, nyitott lejátszó, kezdőképernyő, majd a widget kérése → az
+  album nyílik meg (debug és aláírt kiadás).

@@ -97,6 +97,7 @@ fun CollectionDetailScreen(
                                     tracks = current.tracks,
                                     extraActions = extra,
                                     playlistName = title,
+                                    origin = io.github.x1wer.szabadzene.ui.PlaybackOrigin.collection(type, key),
                                 ),
                             )
                         },

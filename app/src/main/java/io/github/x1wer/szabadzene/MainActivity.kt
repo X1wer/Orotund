@@ -24,6 +24,7 @@ class MainActivity : AppCompatActivity() {
 
     /** Növekvő számláló: minden érték egy „nyisd meg a lejátszót” kérés (pl. értesítésből). */
     private val openPlayerRequests = MutableStateFlow(0)
+    private val openOriginRequests = MutableStateFlow(0)
 
     private val container: AppContainer
         get() = (application as SzabadZeneApp).container
@@ -52,7 +53,7 @@ class MainActivity : AppCompatActivity() {
             CompositionLocalProvider(LocalAppContainer provides container) {
                 SzabadZeneTheme(darkTheme = dark, dynamicColor = appearance.dynamicColor, accent = appearance.accent) {
                     ProvideUiScale(appearance.textScalePercent, appearance.iconScalePercent) {
-                        AppRoot(openPlayerRequests = openPlayerRequests)
+                        AppRoot(openPlayerRequests = openPlayerRequests, openOriginRequests = openOriginRequests)
                     }
                 }
             }
@@ -75,6 +76,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_OPEN_ORIGIN, false) == true) {
+            intent.removeExtra(EXTRA_OPEN_ORIGIN)
+            openOriginRequests.value += 1
+        }
         if (intent?.getBooleanExtra(EXTRA_OPEN_PLAYER, false) == true) {
             intent.removeExtra(EXTRA_OPEN_PLAYER)
             openPlayerRequests.value += 1
@@ -83,5 +88,8 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_OPEN_PLAYER = "io.github.x1wer.szabadzene.OPEN_PLAYER"
+
+        /** A widget: a lejátszás forrását (listát, gyűjteményt vagy a Zenetárat) nyitja meg, nem a lejátszót. */
+        const val EXTRA_OPEN_ORIGIN = "io.github.x1wer.szabadzene.OPEN_ORIGIN"
     }
 }

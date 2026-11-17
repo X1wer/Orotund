@@ -168,7 +168,7 @@ class PlayerWidget : AppWidgetProvider() {
 
         private fun openApp(context: Context): PendingIntent {
             val intent = Intent(context, MainActivity::class.java)
-                .putExtra(MainActivity.EXTRA_OPEN_PLAYER, true)
+                .putExtra(MainActivity.EXTRA_OPEN_ORIGIN, true)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             return PendingIntent.getActivity(
                 context,

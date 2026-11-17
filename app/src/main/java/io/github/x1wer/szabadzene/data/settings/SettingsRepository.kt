@@ -302,6 +302,11 @@ class SettingsRepository(context: Context) {
         it[KEY_PLAYLIST_SPECIAL_FIRST] = settings.specialFirst
     }
 
+    /** Honnan indult a lejátszás (lásd `ui/PlaybackOrigin`); a widget ezt nyitja meg. */
+    val playbackOrigin: Flow<String?> = dataStore.data.map { it[KEY_PLAYBACK_ORIGIN] }.distinctUntilChanged()
+
+    suspend fun setPlaybackOrigin(value: String) = dataStore.edit { it[KEY_PLAYBACK_ORIGIN] = value }
+
     val libraryLayout: Flow<LibraryLayout> = dataStore.data
         .map { prefs -> LibraryLayout.decode(prefs[KEY_LIBRARY_SECTIONS]) }
         .distinctUntilChanged()
@@ -409,6 +414,7 @@ class SettingsRepository(context: Context) {
         val KEY_STOP_AFTER_CURRENT = booleanPreferencesKey("stop_after_current")
         val KEY_PLAY_BUTTONS = stringPreferencesKey("play_buttons_mode")
         val KEY_LIBRARY_SECTIONS = stringPreferencesKey("library_sections")
+        val KEY_PLAYBACK_ORIGIN = stringPreferencesKey("playback_origin")
         val KEY_PLAYLIST_SORT = stringPreferencesKey("playlist_sort")
         val KEY_PLAYLIST_DESC = booleanPreferencesKey("playlist_sort_descending")
         val KEY_PLAYLIST_SPECIAL_FIRST = booleanPreferencesKey("playlist_special_first")

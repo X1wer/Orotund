@@ -16,8 +16,8 @@ android {
         applicationId = "io.github.x1wer.szabadzene"
         minSdk = 26
         targetSdk = 37
-        versionCode = 11
-        versionName = "1.6.0"
+        versionCode = 12
+        versionName = "1.6.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
