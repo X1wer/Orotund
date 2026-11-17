@@ -168,10 +168,25 @@ class LibraryLayoutTest {
     }
 
     @Test
+    fun importMenuOffersFavoritesAndPlayCounts() {
+        compose.onNodeWithTag("tab_playlists").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("playlist_import").performClick()
+        compose.onNodeWithTag("playlist_import_files").assertExists()
+        compose.onNodeWithTag("playlist_import_folder").assertExists()
+        compose.onNodeWithTag("import_favorites").assertExists()
+        compose.onNodeWithTag("import_counts").assertExists()
+    }
+
+    @Test
     fun exportDialogSelectsPlaylists() {
         compose.onNodeWithTag("tab_playlists").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("playlist_export").performClick()
+        // Az exportgomb menüt nyit: listák, Kedvencek, lejátszásszámok.
+        compose.onNodeWithTag("export_favorites").assertExists()
+        compose.onNodeWithTag("export_counts").assertExists()
+        compose.onNodeWithTag("export_lists").performClick()
         compose.onNodeWithTag("playlist_export_dialog").assertExists()
         // Alapból a saját listák vannak kijelölve, a Kedvencek nem.
         compose.onNodeWithTag("export_option_-1").assertIsOff()

@@ -33,6 +33,18 @@ class PlayCountImporter(
     private val library: LibraryRepository,
     private val stats: PlayStatsRepository,
 ) {
+    /** Minden legalább egyszer lejátszott, a zenetárban meglévő szám CSV-ként; visszaadja a sorok számát. */
+    suspend fun export(uri: Uri): Int = withContext(Dispatchers.IO) {
+        val counts = stats.stats.first()
+        val rows = library.allTracks.first().mapNotNull { track ->
+            val count = counts[track.id]?.playCount ?: 0
+            if (count <= 0) null else ImportedCount(count, (track.durationMs / 1000).toInt().takeIf { it > 0 }, track.title, track.artist)
+        }
+        context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(PlayCountCsv.write(rows).toByteArray(Charsets.UTF_8)) }
+            ?: throw IOException("openOutputStream")
+        rows.size
+    }
+
     suspend fun import(uri: Uri): PlayCountImportReport = withContext(Dispatchers.IO) {
         val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
             val out = ByteArrayOutputStream()

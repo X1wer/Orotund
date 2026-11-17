@@ -108,4 +108,18 @@ class PlayCountImportTest {
         val merged = PlayCountMerge.apply(mapOf(a to 10, b to 4, c to 5), existing = mapOf(1L to 3, 2L to 9, 3L to 5))
         assertEquals(mapOf(a to 10), merged)
     }
+
+    @Test
+    fun writtenCsvReadsBackTheSameRows() {
+        val rows = listOf(
+            ImportedCount(3, 125, "Egyszerű", null),
+            ImportedCount(460, 179, "Plastic Bertrand  - Ça plane pour moi", "Előadó; vesszővel"),
+            ImportedCount(12, 3723, "Idéző \"jel\" van benne", "A"),
+        )
+        val text = PlayCountCsv.write(rows)
+        assertEquals("count;duration;title;artist", text.lineSequence().first())
+        assertEquals(rows.sortedByDescending { it.count }, PlayCountCsv.parse(text))
+        assertEquals("1:02:03", PlayCountCsv.formatDuration(3723))
+        assertEquals("02:05", PlayCountCsv.formatDuration(125))
+    }
 }

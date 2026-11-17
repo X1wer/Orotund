@@ -549,3 +549,18 @@ A kiolvasott adatok (CSV, .m3u8) személyesek, a projekten kívül maradnak.
   `-keep` (reflexió). Kézzel ellenőrizve az aláírt APK `Clean_API_37`-en: indítás, zenetár, lejátszás,
   címkeolvasás és -írás (rendszer-jóváhagyással), hiba nélkül.
 - A GPL-3.0 és az LGPL-2.1 teljes szövege az APK-ban, a Licencek képernyőről megnyitható.
+
+---
+
+## 10. rész – Kedvencek és lejátszásszámok importja/exportja a Listák fülön · KÉSZ (2026-11-17) · 1.6.0
+
+- Listák fül, importálás menü: listafájlok, mappa, **„Importálás a Kedvencekbe (.m3u)”**
+  (`PlaylistImporter.importFavorites`: a fájl számai a Kedvencek közé, a meglévők maradnak) és
+  **„Lejátszásszámok importálása”** (ugyanaz, mint a Beállításokban; `PlayCountImportHost`).
+- Listák fül, exportálás menü (eddig közvetlenül a kiválasztó ablak nyílt): „Listák exportálása…”,
+  **„Kedvencek exportálása (.m3u8)”** (`PlaylistExporter.exportSingle`, rendszer „Mentés másként” ablaka, relatív
+  útvonal, ha a hely ismert) és **„Lejátszásszámok exportálása (CSV)”** (`PlayCountImporter.export`,
+  `PlayCountCsv.write` – ugyanaz a forma, amit az import olvas).
+- Tesztek: JVM 156/156 (új: CSV oda-vissza), műszeres 48/48 `Clean_API_37`-en (új: `UserDataTransferTest` 2 –
+  kedvencek és lejátszásszámok export → import a valódi zenetárral; az importmenü elemei), lint 0 hiba. Kézzel:
+  a „Mentés másként” ablakon át mindkét export létrehozza a fájlt.

@@ -49,6 +49,31 @@ object PlayCountCsv {
         }
     }
 
+    /**
+     * A lejátszásszámok CSV-ként (pontosvessző, UTF-8, fejléc: count;duration;title;artist), a legtöbbet
+     * játszottal kezdve – ugyanaz a forma, amit a [parse] beolvas. A pontosvesszőt, idézőjelet vagy sortörést
+     * tartalmazó mező idézőjelek közé kerül.
+     */
+    fun write(rows: List<ImportedCount>): String = buildString {
+        append("count;duration;title;artist\n")
+        rows.sortedWith(compareByDescending<ImportedCount> { it.count }.thenBy { it.title.lowercase() }).forEach { row ->
+            append(row.count).append(';')
+            append(row.durationSeconds?.let(::formatDuration).orEmpty()).append(';')
+            append(cell(row.title)).append(';')
+            append(cell(row.artist.orEmpty())).append('\n')
+        }
+    }
+
+    /** Másodperc → „03:35”, egy óránál hosszabbnál „1:02:03”. */
+    fun formatDuration(seconds: Int): String =
+        if (seconds >= 3600) "%d:%02d:%02d".format(seconds / 3600, seconds / 60 % 60, seconds % 60)
+        else "%02d:%02d".format(seconds / 60, seconds % 60)
+
+    private fun cell(text: String): String {
+        val flat = text.replace('\r', ' ').replace('\n', ' ')
+        return if (flat.any { it == ';' || it == '"' }) "\"" + flat.replace("\"", "\"\"") + "\"" else flat
+    }
+
     /** „03:35” vagy „1:02:03” → másodperc; hibás szövegre null. */
     fun parseDuration(text: String): Int? {
         val parts = text.trim().split(':').map { it.toIntOrNull() ?: return null }

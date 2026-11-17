@@ -505,4 +505,19 @@ To only take it off a playlist, use “Remove from this playlist” instead.</st
     <string name="playlist_special_first">Special lists always first</string>
     <string name="licenses_full_gpl">Full text of the GPL-3.0 license</string>
     <string name="licenses_full_lgpl">Full text of the LGPL-2.1 license (JAudioTagger)</string>
+    <!-- 1.6.0: kedvencek és lejátszásszámok importja/exportja a Listák fülön -->
+    <string name="import_favorites">Import into Favorites (.m3u)</string>
+    <string name="export_lists_item">Export playlists…</string>
+    <string name="export_favorites">Export Favorites (.m3u8)</string>
+    <string name="export_counts">Export play counts (CSV)</string>
+    <string name="export_favorites_file_name">Favorites.m3u8</string>
+    <string name="export_counts_file_name">play-counts.csv</string>
+    <plurals name="export_favorites_done">
+        <item quantity="one">%d song saved.</item>
+        <item quantity="other">%d songs saved.</item>
+    </plurals>
+    <plurals name="export_counts_done">
+        <item quantity="one">The play count of %d song was saved.</item>
+        <item quantity="other">The play counts of %d songs were saved.</item>
+    </plurals>
 </resources>

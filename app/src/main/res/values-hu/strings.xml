@@ -501,4 +501,19 @@ Ha csak egy listából vennéd ki, az „Eltávolítás ebből a listából” p
     <string name="playlist_special_first">Különleges listák mindig elöl</string>
     <string name="licenses_full_gpl">A GPL-3.0 licenc teljes szövege</string>
     <string name="licenses_full_lgpl">Az LGPL-2.1 licenc teljes szövege (JAudioTagger)</string>
+    <!-- 1.6.0: kedvencek és lejátszásszámok importja/exportja a Listák fülön -->
+    <string name="import_favorites">Importálás a Kedvencekbe (.m3u)</string>
+    <string name="export_lists_item">Listák exportálása…</string>
+    <string name="export_favorites">Kedvencek exportálása (.m3u8)</string>
+    <string name="export_counts">Lejátszásszámok exportálása (CSV)</string>
+    <string name="export_favorites_file_name">Kedvencek.m3u8</string>
+    <string name="export_counts_file_name">lejatszasszamok.csv</string>
+    <plurals name="export_favorites_done">
+        <item quantity="one">%d szám mentve.</item>
+        <item quantity="other">%d szám mentve.</item>
+    </plurals>
+    <plurals name="export_counts_done">
+        <item quantity="one">%d szám lejátszásszáma mentve.</item>
+        <item quantity="other">%d szám lejátszásszáma mentve.</item>
+    </plurals>
 </resources>

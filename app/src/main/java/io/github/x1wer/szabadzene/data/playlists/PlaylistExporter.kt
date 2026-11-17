@@ -65,6 +65,24 @@ class PlaylistExporter(private val context: Context) {
         PlaylistExportReport(folderLabel(target, dirUri), outcomes)
     }
 
+    /**
+     * Egyetlen lista (pl. a Kedvencek) a rendszer „Mentés másként” ablakában választott fájlba. Ha a fájl helye
+     * ismert, a számok útvonala ahhoz képest relatív. Visszaadja a számok számát.
+     */
+    suspend fun exportSingle(documentUri: Uri, playlistName: String, tracks: List<Track>): Int = withContext(Dispatchers.IO) {
+        val location = runCatching { DocumentsContract.getDocumentId(documentUri) }.getOrNull()
+            ?.let { StorageLocation.fromDocumentId(documentUri.authority, it) }
+            ?.let { it.copy(path = it.path.substringBeforeLast('/', "")) }
+        writeText(documentUri, PlaylistFileWriter.m3u8(playlistName, tracks, location))
+        tracks.size
+    }
+
+    /** Szöveg írása egy (már létező, kiválasztott) dokumentumba, a régi tartalom helyére. */
+    fun writeText(documentUri: Uri, text: String) {
+        resolver.openOutputStream(documentUri, "wt")?.use { it.write(text.toByteArray(Charsets.UTF_8)) }
+            ?: throw IOException("openOutputStream")
+    }
+
     private fun listChildren(treeUri: Uri, parentId: String): Map<String, String> {
         val result = HashMap<String, String>()
         val children = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentId)

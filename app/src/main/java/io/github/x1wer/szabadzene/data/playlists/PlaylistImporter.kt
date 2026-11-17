@@ -44,6 +44,25 @@ class PlaylistImporter(
         importAll(listTree(treeUri).sortedBy { it.fileName.lowercase() })
     }
 
+    /**
+     * Egy listafájl (.m3u, .m3u8, .pls) számai a Kedvencek közé (a már kedvencek maradnak). Az eredményben a
+     * [favoritesName] áll lista névként.
+     */
+    suspend fun importFavorites(uri: Uri, favoritesName: String): PlaylistImportOutcome = withContext(Dispatchers.IO) {
+        val source = Source(uri, displayName(uri) ?: uri.lastPathSegment.orEmpty(), dirOfDocument(uri))
+        if (!PlaylistFormat.isPlaylistFile(source.fileName)) {
+            return@withContext PlaylistImportOutcome(source.fileName, null, 0, 0, PlaylistImportOutcome.Status.NOT_PLAYLIST)
+        }
+        val parsed = runCatching { read(source) }.getOrNull()
+            ?: return@withContext PlaylistImportOutcome(source.fileName, null, 0, 0, PlaylistImportOutcome.Status.UNREADABLE)
+        val match = PlaylistMatcher(library.allTracks.first()).match(parsed, source.dir)
+        if (match.found == 0) {
+            return@withContext PlaylistImportOutcome(source.fileName, null, 0, match.total, PlaylistImportOutcome.Status.NO_MATCH)
+        }
+        playlists.addFavorites(match.trackIds.distinct())
+        PlaylistImportOutcome(source.fileName, favoritesName, match.found, match.total, PlaylistImportOutcome.Status.CREATED)
+    }
+
     private suspend fun importAll(sources: List<Source>): List<PlaylistImportOutcome> {
         if (sources.isEmpty()) return emptyList()
         val matcher = PlaylistMatcher(library.allTracks.first())

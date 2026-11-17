@@ -12,7 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.CreateNewFolder
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.runtime.mutableIntStateOf
+import io.github.x1wer.szabadzene.ui.settings.PlayCountImportHost
 import androidx.compose.material.icons.rounded.FileOpen
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Description
@@ -72,6 +77,12 @@ fun PlaylistImportButton() {
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) run { container.playlistImporter.importFolder(uri) }
     }
+    val favoritesName = stringResource(R.string.favorites_title)
+    val pickFavorites = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) run { listOf(container.playlistImporter.importFavorites(uri, favoritesName)) }
+    }
+    var countsRequest by remember { mutableIntStateOf(0) }
+    PlayCountImportHost(countsRequest)
 
     Box {
         IconButton(onClick = { menuOpen = true }, modifier = Modifier.testTag("playlist_import")) {
@@ -106,6 +117,33 @@ fun PlaylistImportButton() {
                 },
                 modifier = Modifier
                     .testTag("playlist_import_folder")
+                    .heightIn(min = 56.dp),
+            )
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.import_favorites)) },
+                leadingIcon = { Icon(Icons.Rounded.Favorite, contentDescription = null) },
+                onClick = {
+                    menuOpen = false
+                    try {
+                        pickFavorites.launch(PlaylistImporter.PICKER_MIME_TYPES)
+                    } catch (_: ActivityNotFoundException) {
+                        failed = true
+                    }
+                },
+                modifier = Modifier
+                    .testTag("import_favorites")
+                    .heightIn(min = 56.dp),
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.settings_import_counts)) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.TrendingUp, contentDescription = null) },
+                onClick = {
+                    menuOpen = false
+                    countsRequest++
+                },
+                modifier = Modifier
+                    .testTag("import_counts")
                     .heightIn(min = 56.dp),
             )
         }

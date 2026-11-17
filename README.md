@@ -29,7 +29,8 @@ Két dologra külön figyel:
 - **Több szám kijelölése** (gomb vagy hosszú nyomás): együttes lejátszás, várólistához vagy listához adás,
   kedvencek, megosztás, törlés.
 - Az alsó fülek között oldalra húzással is lehet váltani; állítható **betű- és ikonméret** (85–150%).
-- **Lejátszásszámok importálása** CSV-ből (Beállítások → Zenetár; csak növel).
+- **Lejátszásszámok és Kedvencek importja/exportja** a Listák fül importálás és exportálás menüjéből (CSV, illetve
+  .m3u8; a lejátszásszámok importja csak növel).
 - **Listák importálása** .m3u, .m3u8 és .pls fájlokból (egyenként vagy egy egész mappából) és **exportálása**
   .m3u8 fájlba (a kijelölt listák egy választott mappába); albumot, előadót, mappát új listaként is lehet menteni.
 - Lejátszásszám minden számnál (kézzel is átírható), automatikus **Legtöbbet játszott** és **Nemrég játszott**

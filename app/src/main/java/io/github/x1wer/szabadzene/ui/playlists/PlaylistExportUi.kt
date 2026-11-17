@@ -53,6 +53,10 @@ import io.github.x1wer.szabadzene.ui.library.LibraryViewModel
 import io.github.x1wer.szabadzene.ui.trackCountText
 import kotlinx.coroutines.launch
 
+/** A listafájl típusa a „Mentés másként” ablakhoz (ha a rendszer nem ismeri az m3u8-at, általános bináris). */
+private val PLAYLIST_MIME: String =
+    android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension("m3u8") ?: "application/octet-stream"
+
 /** Egy választható lista az export ablakban. */
 private data class ExportChoice(val id: Long, val name: String, val count: Int)
 
@@ -108,15 +112,89 @@ fun PlaylistExportButton(viewModel: LibraryViewModel) {
         }
     }
 
-    IconButton(
-        onClick = {
-            // Alapból a saját listák vannak kijelölve.
-            selected = playlists.map { it.id }
-            choosing = true
-        },
-        modifier = Modifier.testTag("playlist_export"),
-    ) {
-        Icon(Icons.Rounded.Output, contentDescription = stringResource(R.string.playlist_export))
+    var menuOpen by remember { mutableStateOf(false) }
+    var singleResult by remember { mutableStateOf<String?>(null) }
+    val favoritesFileName = stringResource(R.string.export_favorites_file_name)
+    val countsFileName = stringResource(R.string.export_counts_file_name)
+    val resources = androidx.compose.ui.platform.LocalResources.current
+    fun runSingle(block: suspend () -> String) {
+        running = true
+        scope.launch {
+            val result = runCatching { block() }
+            running = false
+            singleResult = result.getOrNull()
+            failed = result.isFailure
+        }
+    }
+    val saveFavorites = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(PLAYLIST_MIME),
+    ) { uri ->
+        if (uri != null) {
+            runSingle {
+                val count = container.playlistExporter.exportSingle(uri, favoritesTitle, favorites)
+                resources.getQuantityString(R.plurals.export_favorites_done, count, count)
+            }
+        }
+    }
+    val saveCounts = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri != null) {
+            runSingle {
+                val count = container.playCountImporter.export(uri)
+                resources.getQuantityString(R.plurals.export_counts_done, count, count)
+            }
+        }
+    }
+
+    androidx.compose.foundation.layout.Box {
+        IconButton(onClick = { menuOpen = true }, modifier = Modifier.testTag("playlist_export")) {
+            Icon(Icons.Rounded.Output, contentDescription = stringResource(R.string.playlist_export))
+        }
+        androidx.compose.material3.DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            androidx.compose.material3.DropdownMenuItem(
+                text = { Text(stringResource(R.string.export_lists_item)) },
+                onClick = {
+                    menuOpen = false
+                    // Alapból a saját listák vannak kijelölve.
+                    selected = playlists.map { it.id }
+                    choosing = true
+                },
+                modifier = Modifier.testTag("export_lists").heightIn(min = 56.dp),
+            )
+            androidx.compose.material3.DropdownMenuItem(
+                text = { Text(stringResource(R.string.export_favorites)) },
+                onClick = {
+                    menuOpen = false
+                    try {
+                        saveFavorites.launch(favoritesFileName)
+                    } catch (_: ActivityNotFoundException) {
+                        failed = true
+                    }
+                },
+                modifier = Modifier.testTag("export_favorites").heightIn(min = 56.dp),
+            )
+            androidx.compose.material3.DropdownMenuItem(
+                text = { Text(stringResource(R.string.export_counts)) },
+                onClick = {
+                    menuOpen = false
+                    try {
+                        saveCounts.launch(countsFileName)
+                    } catch (_: ActivityNotFoundException) {
+                        failed = true
+                    }
+                },
+                modifier = Modifier.testTag("export_counts").heightIn(min = 56.dp),
+            )
+        }
+    }
+
+    singleResult?.let { message ->
+        AlertDialog(
+            onDismissRequest = { singleResult = null },
+            modifier = Modifier.testTag("export_single_report"),
+            title = { Text(stringResource(R.string.playlist_export_done)) },
+            text = { Text(message) },
+            confirmButton = { TextButton(onClick = { singleResult = null }) { Text(stringResource(R.string.dialog_close)) } },
+        )
     }
 
     if (choosing) {
@@ -154,7 +232,7 @@ fun PlaylistExportButton(viewModel: LibraryViewModel) {
     }
 
     val done = report
-    if (done != null || failed) {
+    if (done != null || (failed && singleResult == null)) {
         ExportReportDialog(done, failed) {
             report = null
             failed = false
