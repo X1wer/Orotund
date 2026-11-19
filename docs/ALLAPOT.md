@@ -598,4 +598,8 @@ A kiolvasott adatok (CSV, .m3u8) személyesek, a projekten kívül maradnak.
   `AlarmPlaylistProviderTest` 3 – a valódi szolgáltatón át), lint 0 hiba. Kézzel, az ébresztővel együtt: engedélykérés,
   listák és dalok az ébresztő hangválasztójában, hangos és fejhallgatós listás ébresztés zárolt képernyőn,
   számváltás, a hibás fájl kihagyása, ébresztés futó Zengő nélkül (hidegindítás).
-- Verzió 1.7.0 (versionCode 13). Kiadás (aláírt APK, GitHub) még nem készült – a felhasználó jóváhagyására vár.
+- Verzió 1.7.0 (versionCode 13). **Kiadva 2026-11-19:** `v1.7.0` címke, GitHub-kiadás `Orotund-1.7.0.apk` +
+  `SHA256SUMS.txt` (APK SHA-256 `fa2231f96e9a26cb1a6235b39bb270c69b974b9ed9854ef56fefc2d5849df7b8`, az Orotund
+  kulcsával aláírva). A kiadási változatot az emulátoron a Headphone Alarm 1.1.0 kiadási változatával együtt
+  is kipróbáltuk (1.6.1 → 1.7.0 frissítés, engedélykérés, hangos Kedvencek-ébresztés a választott első dallal,
+  futó Zengő nélkül). A RepoShelf-katalógushoz nem kellett nyúlni (csomagnév és aláíró változatlan).
