@@ -19,12 +19,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 
 class SzabadZeneApp : Application() {
-    lateinit var container: AppContainer
-        private set
+    /**
+     * Lusta és szálbiztos: ha a folyamatot egy másik app (ébresztő) indítja a lejátszásilista-híddal
+     * ([io.github.x1wer.szabadzene.integration.AlarmPlaylistProvider]), a rendszer a szolgáltatót
+     * még az [onCreate] előtt telepíti és hívhatja – ilyenkor a szolgáltató hozza létre.
+     */
+    val container: AppContainer by lazy { AppContainer(this) }
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(this)
         container.library.start()
     }
 }

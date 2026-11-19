@@ -20,6 +20,16 @@ interface PlaylistDao {
     )
     fun observePlaylists(): Flow<List<PlaylistSummary>>
 
+    @Query(
+        """
+        SELECT p.id AS id, p.name AS name, p.created_at AS created_at,
+               (SELECT COUNT(*) FROM playlist_entries e WHERE e.playlist_id = p.id) AS entry_count
+        FROM playlists p
+        ORDER BY p.name COLLATE NOCASE
+        """,
+    )
+    suspend fun playlists(): List<PlaylistSummary>
+
     @Query("SELECT * FROM playlists WHERE id = :id")
     fun observePlaylist(id: Long): Flow<PlaylistEntity?>
 
@@ -110,6 +120,12 @@ interface PlaylistDao {
 interface FavoriteDao {
     @Query("SELECT track_id FROM favorites ORDER BY added_at DESC")
     fun observeIds(): Flow<List<Long>>
+
+    @Query("SELECT track_id FROM favorites ORDER BY added_at DESC")
+    suspend fun ids(): List<Long>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM favorites WHERE track_id = :trackId)")
+    suspend fun contains(trackId: Long): Boolean
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(favorites: List<FavoriteEntity>)

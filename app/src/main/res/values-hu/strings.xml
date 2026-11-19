@@ -516,4 +516,7 @@ Ha csak egy listából vennéd ki, az „Eltávolítás ebből a listából” p
         <item quantity="one">%d szám lejátszásszáma mentve.</item>
         <item quantity="other">%d szám lejátszásszáma mentve.</item>
     </plurals>
+    <!-- Engedély ébresztőalkalmazásoknak (a rendszer engedélykérő ablaka mutatja) -->
+    <string name="permission_alarm_playlists_label">a Zengő lejátszási listáinak olvasása ébresztéshez</string>
+    <string name="permission_alarm_playlists_description">a Zengő lejátszási listáinak és kedvenceinek olvasása és lejátszása ébresztőhangként (módosítás nélkül)</string>
 </resources>

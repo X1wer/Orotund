@@ -30,6 +30,14 @@
         android:name="android.permission.ACCESS_NETWORK_STATE"
         tools:node="remove" />
 
+    <!-- Ébresztőalkalmazás (Headphone Alarm / FülesÉbresztő) olvashatja a lejátszási listákat, ha a
+         felhasználó ezt az engedélyt megadja neki. Lásd: integration/AlarmBridge.kt. -->
+    <permission
+        android:name="${applicationId}.permission.ALARM_PLAYLISTS"
+        android:description="@string/permission_alarm_playlists_description"
+        android:label="@string/permission_alarm_playlists_label"
+        android:protectionLevel="dangerous" />
+
     <application
         android:name=".SzabadZeneApp"
         android:allowBackup="true"
@@ -85,6 +93,13 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_player_info" />
         </receiver>
+
+        <!-- Csak olvasható lejátszásilista-híd ébresztőalkalmazásoknak (engedélyhez kötött). -->
+        <provider
+            android:name=".integration.AlarmPlaylistProvider"
+            android:authorities="${applicationId}.alarmplaylists"
+            android:exported="true"
+            android:readPermission="${applicationId}.permission.ALARM_PLAYLISTS" />
 
         <!-- Az Android 13 előtti rendszereken az alkalmazásszintű nyelvválasztást az AppCompat tárolja. -->
         <service

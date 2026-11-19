@@ -520,4 +520,7 @@ To only take it off a playlist, use “Remove from this playlist” instead.</st
         <item quantity="one">The play count of %d song was saved.</item>
         <item quantity="other">The play counts of %d songs were saved.</item>
     </plurals>
+    <!-- Engedély ébresztőalkalmazásoknak (a rendszer engedélykérő ablaka mutatja) -->
+    <string name="permission_alarm_playlists_label">read Orotund playlists for alarms</string>
+    <string name="permission_alarm_playlists_description">read your Orotund playlists and favourites and play them as alarm sounds (without changing anything)</string>
 </resources>

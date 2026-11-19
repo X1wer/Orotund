@@ -575,3 +575,27 @@ A kiolvasott adatok (CSV, .m3u8) személyesek, a projekten kívül maradnak.
 - Tesztek: JVM 158/158 (új: `PlaybackOriginTest` 2), műszeres 50/50 `Clean_API_37`-en (új: `WidgetOpensOriginTest`
   2), lint 0 hiba; kézzel: albumból indított lejátszás, nyitott lejátszó, kezdőképernyő, majd a widget kérése → az
   album nyílik meg (debug és aláírt kiadás).
+
+---
+
+## 11. rész – lejátszási listák ébresztőhangként (Headphone Alarm / FülesÉbresztő) · KÉSZ (2026-11-19) · 1.7.0
+
+- A felhasználó kérése: a saját ébresztőalkalmazása (Headphone Alarm, magyarul FülesÉbresztő) a Zengő egy
+  lejátszási listáját szólaltassa meg ébresztésként, alapból a Zengőben mentett keverési/ismétlési móddal.
+- Új csomag `integration/`: `AlarmBridge` (a szerződés: oszlopok, útvonalak, a 4 ismétlési mód neve – tiszta
+  Kotlin) és `AlarmPlaylistProvider` (exportált, **csak olvasható** ContentProvider, hatóság
+  `${applicationId}.alarmplaylists`). Végpontok: `playlists` (elsőként a Kedvencek, `_id` = 0), `playlists/<id>/tracks`
+  (a zenetárból eltűnt számok kimaradnak), `playback_mode` (`shuffle`, `repeat` = ALL/ONE/OFF/STOP_AFTER_CURRENT,
+  `api_version` = 1), `audio/<id>` (csak listában vagy a Kedvencek között szereplő szám, csak olvasásra).
+- Engedély: `${applicationId}.permission.ALARM_PLAYLISTS`, **veszélyes** szintű (a felhasználó adja meg az
+  ébresztőnek a rendszer engedélyablakában; aláírás-szintű nem lehet, mert a két app más kulccsal van aláírva).
+  Android 17 az engedély *leírását* teszi az „Engedélyezi, hogy … ?” mondatba, ezért mindkét szöveg kifejezés.
+- Hibajavítás közben: ha az ébresztő hidegen (futó Zengő nélkül) kérdez, a rendszer a szolgáltatót az
+  `Application.onCreate` előtt telepíti és hívja – az `AppContainer` ezért lusta lett (`by lazy`). Ez nélkül a
+  reggeli ébresztés a beépített hangra esett volna vissza.
+- DAO: `PlaylistDao.playlists()`, `FavoriteDao.ids()` és `contains()` (sémaváltozás nincs).
+- Tesztek: JVM 161/161 (új: `AlarmBridgeTest` 3), műszeres 53/53 a `Medium_Phone_API_37.0` emulátoron (új:
+  `AlarmPlaylistProviderTest` 3 – a valódi szolgáltatón át), lint 0 hiba. Kézzel, az ébresztővel együtt: engedélykérés,
+  listák és dalok az ébresztő hangválasztójában, hangos és fejhallgatós listás ébresztés zárolt képernyőn,
+  számváltás, a hibás fájl kihagyása, ébresztés futó Zengő nélkül (hidegindítás).
+- Verzió 1.7.0 (versionCode 13). Kiadás (aláírt APK, GitHub) még nem készült – a felhasználó jóváhagyására vár.

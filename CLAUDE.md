@@ -55,6 +55,9 @@ io.github.x1wer.szabadzene
 │   │                LosslessTrim (MP3-keret- és WAV-mintamásolás, tiszta Kotlin), AudioTrimmer (+ M4A
 │   │                átcsomagolás, FLAC/OGG → AAC újrakódolás MediaCodec-kel), TrackFileEditor (Android-oldal:
 │   │                másolat → írás → visszaolvasás → visszaírás → ellenőrzés; vágás új fájlba; törlés; csengőhang)
+│   ├── (integration/) AlarmBridge (a szerződés, tiszta Kotlin) + AlarmPlaylistProvider: csak olvasható,
+│   │                `ALARM_PLAYLISTS` engedélyhez kötött ContentProvider ébresztőalkalmazásoknak (listák, dalok,
+│   │                mentett mód, a listás számok hangfájlja); a csomag a `data/` mellett van
 │   ├── playlists/   PlaylistRepository (listák, kedvencek; forgetTrack a fájltörlés után, a statisztikát is törli),
 │   │                PlaylistImport (M3U/PLS olvasás és párosítás – tiszta Kotlin), PlaylistImporter (SAF-os import),
 │   │                PlaylistExport (M3U8 írás, relatív útvonal – tiszta Kotlin), PlaylistExporter (SAF-os export)
@@ -113,7 +116,7 @@ io.github.x1wer.szabadzene
 - Tesztfájlok a JVM- és műszeres tesztekhez: `app/src/sharedTest/assets/audio/`
   (`python -I tools/generate_test_audio.py --fixtures`).
 - API 28-on a MediaStore-törlés a fájlt nem törli: `TrackFileEditor.deleteLegacy` a fájlt magától törli (regressziós teszt: `FileOperationsTest`).
-- Átadási dokumentumok: `README.md`, `docs/TESZTOSSZEFOGLALO.md`, `docs/LICENCEK.md`. Verzió: 1.6.1.
+- Átadási dokumentumok: `README.md`, `docs/TESZTOSSZEFOGLALO.md`, `docs/LICENCEK.md`. Verzió: 1.7.0.
 - A zenetár Lejátszás/Keverés gombja (`rememberPlayAll` → `PlayerConnection.playAll`): „a mostani szám
   végigszól” módban, ha szól zene, a `PLAY_KEEP_CURRENT` munkamenet-parancs megy a szolgáltatásnak, amely a
   most szóló elem körül cseréli le a várólistát (az elemet nem cseréli, így a lejátszás nem szakad meg).
@@ -135,6 +138,8 @@ io.github.x1wer.szabadzene
   így a kódba szánt sortörés-jelből valódi sortörés lesz: ilyen szerkesztéshez fájlba írt szkriptet vagy az
   Edit eszközt használd. Minden szövegfájl UTF-8 (az `app/build.gradle.kts` egy része korábban Latin-1 volt,
   ezt az 1.1.0-ban javítottuk) – ékezetes szöveget mindig UTF-8-ként írj.
+- Az `AppContainer` lusta (`by lazy`): egy másik app szolgáltatóhívása (ébresztő) a folyamatot az
+  `Application.onCreate` ELŐTT is elérheti, ezért a tárolót ne `onCreate`-ben hozd létre.
 - Kiadási aláírás még nincs. Ha kell: saját, új kulccsal (más app kulcsát ne használd).
 - Ha a gépre telefon is csatlakoztatva van, a `connectedDebugAndroidTest` MINDEN eszközön futna: állítsd be az
   `ANDROID_SERIAL` változót az emulátorra (pl. `emulator-5554`), a valódi telefonra ne települjön teszt.

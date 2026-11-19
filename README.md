@@ -52,6 +52,10 @@ Két dologra külön figyel:
   fájltörlés a telefonról külön megerősítéssel (a listából való eltávolítástól független művelet).
 - Világos / sötét / rendszer szerinti téma, rendszerszínek (Android 12+) vagy választható kiemelőszín,
   magyar és angol felület (rendszernyelv szerint, vagy kézzel választva).
+- **Ébresztőhangként is (1.7.0):** a Headphone Alarm / FülesÉbresztő ébresztő a Zengő lejátszási listáit és a
+  Kedvenceket ébresztőhangként játszhatja le. Ehhez az ébresztőben kell megadni a „Zengő lejátszási listáinak
+  olvasása ébresztéshez” engedélyt; az ébresztő csak olvas (listák, dalok, mentett keverési/ismétlési mód),
+  és csak a listákban szereplő számokat éri el.
 
 Részletek, ismert korlátok: [`docs/TESZTOSSZEFOGLALO.md`](docs/TESZTOSSZEFOGLALO.md).
 Követelmények: [`docs/KOVETELMENYEK.md`](docs/KOVETELMENYEK.md). Fejlesztési napló: [`docs/ALLAPOT.md`](docs/ALLAPOT.md).
