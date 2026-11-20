@@ -628,4 +628,8 @@ A kiolvasott adatok (CSV, .m3u8) személyesek, a projekten kívül maradnak.
   a parancsok elérhetők, üres lista elutasítva, a hangerő változatlan), kézzel az ébresztővel együtt az emulátoron
   (lásd a Headphone Alarm tesztjegyzőkönyvét: háttérből indulás zárolt képernyőn, oldalra húzás, szundi + folytatás,
   lista vége, értesítés). Végeredmények: JVM 164/164, műszeres 54/54 a `Medium_Phone_API_37.0` emulátoron, lint 0 hiba.
-- Verzió 1.8.0 (versionCode 14). Kiadás még nincs – a felhasználó jóváhagyására vár.
+- Verzió 1.8.0 (versionCode 14). **Kiadva 2026-11-20:** `v1.8.0` címke, GitHub-kiadás `Orotund-1.8.0.apk` +
+  `SHA256SUMS.txt` (APK SHA-256 `415d6580b5e6ac86237e33817e11dd04ad8778415f4ecd3cd713ea34bd52294f`, az Orotund
+  kulcsával). A kiadási változatot az emulátoron a Headphone Alarm 1.2.0 kiadási változatával együtt is kipróbáltuk
+  (1.7.0 → 1.8.0 frissítés, az engedély megmaradt; hangos Kedvencek-ébresztés a Zengőben, oldalra húzás után a zene
+  tovább szólt). A RepoShelf-katalógushoz nem kellett nyúlni.
