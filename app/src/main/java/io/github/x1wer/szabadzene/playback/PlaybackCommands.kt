@@ -55,6 +55,10 @@ object PlaybackCommands {
     val playKeepCurrent = SessionCommand(ACTION_PLAY_KEEP_CURRENT, Bundle.EMPTY)
     val skipForward = SessionCommand(ACTION_SKIP_FORWARD, Bundle.EMPTY)
     val playbackError = SessionCommand(EVENT_PLAYBACK_ERROR, Bundle.EMPTY)
+
+    /** Ébresztőalkalmazásoknak (ALARM_PLAYLISTS engedéllyel), lásd [io.github.x1wer.szabadzene.integration.AlarmBridge]. */
+    val alarmCommands: List<SessionCommand> =
+        io.github.x1wer.szabadzene.integration.AlarmBridge.ALARM_ACTIONS.map { SessionCommand(it, Bundle.EMPTY) }
 }
 
 /**

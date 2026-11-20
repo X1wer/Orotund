@@ -70,6 +70,9 @@ io.github.x1wer.szabadzene
 ├── playback/
 │   ├── PlaybackService   – MediaSessionService: az EGYETLEN ExoPlayer + MediaSession; várólista-mentés
 │   │                       és -visszaállítás, onPlaybackResumption, fejhallgató-figyelés
+│   ├── AlarmPlayback     – ébresztés a Zengőben (ALARM_PLAY / VOLUME / FINISH munkamenet-parancsok, csak az
+│   │                       ALARM_PLAYLISTS engedéllyel): néma indulás, ideiglenes ismétlés/hangfolyam/kimenet,
+│   │                       a végén visszaállítás; szundi után folytatás (lásd integration/AlarmBridge, 2-es változat)
 │   ├── SkipController    – az EGYETLEN közös ugrási logika (tiszta Kotlin, unit-tesztelt)
 │   ├── SkipAwarePlayer   – ForwardingPlayer: rendszer/fejhallgató előre-vissza + beszúrások figyelése;
 │   │                       az „Előző” gomb (minden vezérlőé) itt kapja a beállítható küszöböt (PreviousLogic)
@@ -116,7 +119,7 @@ io.github.x1wer.szabadzene
 - Tesztfájlok a JVM- és műszeres tesztekhez: `app/src/sharedTest/assets/audio/`
   (`python -I tools/generate_test_audio.py --fixtures`).
 - API 28-on a MediaStore-törlés a fájlt nem törli: `TrackFileEditor.deleteLegacy` a fájlt magától törli (regressziós teszt: `FileOperationsTest`).
-- Átadási dokumentumok: `README.md`, `docs/TESZTOSSZEFOGLALO.md`, `docs/LICENCEK.md`. Verzió: 1.7.0.
+- Átadási dokumentumok: `README.md`, `docs/TESZTOSSZEFOGLALO.md`, `docs/LICENCEK.md`. Verzió: 1.8.0.
 - A zenetár Lejátszás/Keverés gombja (`rememberPlayAll` → `PlayerConnection.playAll`): „a mostani szám
   végigszól” módban, ha szól zene, a `PLAY_KEEP_CURRENT` munkamenet-parancs megy a szolgáltatásnak, amely a
   most szóló elem körül cseréli le a várólistát (az elemet nem cseréli, így a lejátszás nem szakad meg).
@@ -140,7 +143,10 @@ io.github.x1wer.szabadzene
   ezt az 1.1.0-ban javítottuk) – ékezetes szöveget mindig UTF-8-ként írj.
 - Az `AppContainer` lusta (`by lazy`): egy másik app szolgáltatóhívása (ébresztő) a folyamatot az
   `Application.onCreate` ELŐTT is elérheti, ezért a tárolót ne `onCreate`-ben hozd létre.
-- Kiadási aláírás még nincs. Ha kell: saját, új kulccsal (más app kulcsát ne használd).
+- Riasztási hangfolyamon (`USAGE_ALARM`) a Media3 automatikus hangfókusz-kezelése nem használható (kivételt dob):
+  az `AlarmPlayback` ilyenkor maga kéri a fókuszt.
+- Kiadási aláírás (1.5.0 óta): saját Orotund-kulcs a repón kívül, build: `outputs\Orotund-release\build-orotund-release.ps1`
+  (kimenet: `dist\Orotund-<verzió>.apk`); más app kulcsát ne használd.
 - Ha a gépre telefon is csatlakoztatva van, a `connectedDebugAndroidTest` MINDEN eszközön futna: állítsd be az
   `ANDROID_SERIAL` változót az emulátorra (pl. `emulator-5554`), a valódi telefonra ne települjön teszt.
 - A fájlíró eszköz a `\uFEFF` escape-et valódi BOM-karakterré alakíthatja (lint `ByteOrderMark` hiba): ilyen

@@ -12,7 +12,6 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.OptIn
-import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -38,6 +37,7 @@ import io.github.x1wer.szabadzene.data.library.Track
 import io.github.x1wer.szabadzene.data.settings.HeadsetSettings
 import io.github.x1wer.szabadzene.data.settings.PlaybackPrefs
 import io.github.x1wer.szabadzene.data.settings.SkipSettings
+import io.github.x1wer.szabadzene.integration.AlarmBridge
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
@@ -88,6 +88,9 @@ class PlaybackService : MediaSessionService() {
     private var audioManager: AudioManager? = null
 
     private lateinit var effects: AudioEffectsController
+
+    /** Ébresztés a Zengőben (egy ébresztőalkalmazás indítja, lásd [AlarmPlayback]). */
+    private lateinit var alarm: AlarmPlayback
     private val sleepTimer = SleepTimer(clock = SystemClock::elapsedRealtime)
     private var sleepJob: Job? = null
     private var widgetJob: Job? = null
@@ -98,18 +101,20 @@ class PlaybackService : MediaSessionService() {
         queueStore = QueueStore(container.database.queueDao())
 
         player = ExoPlayer.Builder(this)
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(C.USAGE_MEDIA)
-                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                    .build(),
-                /* handleAudioFocus = */ true,
-            )
+            .setAudioAttributes(AlarmPlayback.MEDIA_ATTRIBUTES, /* handleAudioFocus = */ true)
             // Fejhallgató kihúzásakor vagy Bluetooth-kimenet megszakadásakor szünet (beállítható).
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
         player.addListener(PlayerEvents())
+        alarm = AlarmPlayback(
+            context = this,
+            player = player,
+            scope = scope,
+            loadTracks = ::alarmTracks,
+            applyShuffleSequence = ::applyShuffleSequence,
+            onModesChanged = ::applyModes,
+        )
         isRunning = true
         current = java.lang.ref.WeakReference(this)
 
@@ -150,7 +155,7 @@ class PlaybackService : MediaSessionService() {
         scope.launch {
             container.settings.headset.collect { settings ->
                 headsetSettings = settings
-                player.setHandleAudioBecomingNoisy(settings.pauseOnDisconnect)
+                applyModes()
             }
         }
         audioManager = getSystemService(AudioManager::class.java)?.also {
@@ -214,9 +219,34 @@ class PlaybackService : MediaSessionService() {
         onSleepTimerChanged()
     }
 
-    /** A szám végén szünet: az időzítő „szám végén” módja vagy a „leállás az aktuális szám végén” ismétlési mód. */
+    /**
+     * A szám végén szünet: az időzítő „szám végén” módja vagy a „leállás az aktuális szám végén” ismétlési
+     * mód – ébresztés közben ez utóbbi helyett az ébresztés saját beállítása.
+     */
     private fun updatePauseAtEnd() {
-        player.pauseAtEndOfMediaItems = sleepTimer.pauseAtEndOfItems || playbackPrefs.stopAfterCurrent
+        player.pauseAtEndOfMediaItems = sleepTimer.pauseAtEndOfItems || stopAfterCurrent()
+    }
+
+    private fun stopAfterCurrent(): Boolean = alarm.stopAfterFirst ?: playbackPrefs.stopAfterCurrent
+
+    /** Ébresztés közben a kihúzás mindig megállítja a lejátszást (fejhallgatós ébresztés: ne szóljon a hangszóró). */
+    private fun applyModes() {
+        updatePauseAtEnd()
+        player.setHandleAudioBecomingNoisy(headsetSettings.pauseOnDisconnect || alarm.isActive)
+    }
+
+    /** Az ébresztés listájának (vagy a Kedvenceknek) még elérhető számai, a lista sorrendjében. */
+    private suspend fun alarmTracks(playlistId: Long): List<Track> {
+        val db = container.database
+        val ids = withContext(Dispatchers.IO) {
+            if (playlistId == AlarmBridge.FAVORITES_ID) {
+                db.favoriteDao().ids()
+            } else {
+                db.playlistDao().entries(playlistId).map { it.trackId }
+            }
+        }
+        val known = container.library.tracksByIds(ids.distinct())
+        return ids.mapNotNull { known[it] }
     }
 
     private fun onSleepTimerChanged() {
@@ -542,6 +572,7 @@ class PlaybackService : MediaSessionService() {
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            alarm.onItemTransition()
             skipController.reset()
             playCounter.onItemStarted(mediaItem?.mediaId, player.duration.takeIf { it != C.TIME_UNSET } ?: 0L, player.isPlaying)
         }
@@ -556,7 +587,7 @@ class PlaybackService : MediaSessionService() {
                 onSleepTimerChanged()
                 // „Leállás az aktuális szám végén”: a következő szám elejére állunk (szünetben),
                 // így a lejátszógomb azzal folytatja; az utolsó számnál az aktuális elejére.
-                if (playbackPrefs.stopAfterCurrent) {
+                if (stopAfterCurrent()) {
                     if (player.hasNextMediaItem()) player.seekToNextMediaItem() else player.seekTo(0L)
                 }
             }
@@ -630,6 +661,10 @@ class PlaybackService : MediaSessionService() {
                         add(PlaybackCommands.reloadTracks)
                         add(PlaybackCommands.playKeepCurrent)
                     }
+                    // Ébresztés a Zengőben: csak az ALARM_PLAYLISTS engedéllyel rendelkező appnak.
+                    if (AlarmPlayback.isAllowed(this@PlaybackService, controller.packageName)) {
+                        PlaybackCommands.alarmCommands.forEach(::add)
+                    }
                 }
                 .build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
@@ -645,6 +680,9 @@ class PlaybackService : MediaSessionService() {
             customCommand: SessionCommand,
             args: Bundle,
         ): ListenableFuture<SessionResult> {
+            if (customCommand.customAction in AlarmBridge.ALARM_ACTIONS) {
+                return onAlarmCommand(controller, customCommand.customAction, args)
+            }
             val step = args.getLong(PlaybackCommands.EXTRA_STEP_MS, 0L).takeIf { it > 0 }
             when (customCommand.customAction) {
                 PlaybackCommands.ACTION_SKIP_BACK -> performSkip(SkipDirection.BACK, step)
@@ -666,6 +704,44 @@ class PlaybackService : MediaSessionService() {
                 else -> return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
+
+        /** Az engedélyt minden parancsnál újra ellenőrizzük (a felhasználó közben visszavonhatta). */
+        private fun onAlarmCommand(
+            controller: MediaSession.ControllerInfo,
+            action: String,
+            args: Bundle,
+        ): ListenableFuture<SessionResult> {
+            if (!AlarmPlayback.isAllowed(this@PlaybackService, controller.packageName)) {
+                return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
+            }
+            return when (action) {
+                AlarmBridge.ACTION_ALARM_PLAY -> {
+                    val future = SettableFuture.create<SessionResult>()
+                    scope.launch {
+                        val result = try {
+                            alarm.play(controller.packageName, args)
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Az ébresztés indítása nem sikerült", e)
+                            SessionResult(SessionError.ERROR_UNKNOWN)
+                        }
+                        future.set(result)
+                    }
+                    future
+                }
+                AlarmBridge.ACTION_ALARM_VOLUME -> {
+                    alarm.volume(args)
+                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+                else -> {
+                    alarm.finish(args.getBoolean(AlarmBridge.EXTRA_KEEP_PLAYING, false))
+                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+            }
+        }
+
+        override fun onDisconnected(session: MediaSession, controller: MediaSession.ControllerInfo) {
+            alarm.onControllerDisconnected(controller.packageName)
         }
 
         override fun onAddMediaItems(

@@ -603,3 +603,29 @@ A kiolvasott adatok (CSV, .m3u8) személyesek, a projekten kívül maradnak.
   kulcsával aláírva). A kiadási változatot az emulátoron a Headphone Alarm 1.1.0 kiadási változatával együtt
   is kipróbáltuk (1.6.1 → 1.7.0 frissítés, engedélykérés, hangos Kedvencek-ébresztés a választott első dallal,
   futó Zengő nélkül). A RepoShelf-katalógushoz nem kellett nyúlni (csomagnév és aláíró változatlan).
+
+---
+
+## 12. rész – az ébresztés a Zengőben szól · KÉSZ (2026-11-20) · 1.8.0
+
+- A felhasználó kérése: a Headphone Alarm Zengő-listás ébresztése magában a Zengőben induljon; az ébresztés
+  oldalra húzásakor a lista szóljon tovább, felfelé húzásra (leállítás) álljon meg, szundinál folytassa később.
+- `integration/AlarmBridge` 2-es változat: `ACTION_ALARM_PLAY` / `ACTION_ALARM_VOLUME` / `ACTION_ALARM_FINISH`
+  munkamenet-parancsok és extrák; tiszta függvények: `alarmQueue` (a kezdő szám keverésnél is elsőként szól, minden szám
+  egyszer), `repeatModeFor`.
+- `playback/AlarmPlayback`: a parancsok végrehajtása a szolgáltatás lejátszóján. Néma indulás (a hangerőt az ébresztő adja
+  meg az útvonal ellenőrzése után), ideiglenes ismétlési mód / „leállás az első dal után” / „utolsó dal ismétlése”,
+  hangos ébresztésnél riasztási hangfolyam saját fókuszkéréssel, fejhallgatósnál előnyben részesített kimenet és kötelező
+  szünet kihúzáskor. A végén (`FINISH`) visszaáll minden; „szól tovább” esetén a hangerő 1,5 mp alatt tér vissza. A kulcs
+  és a várólista egyezésekor a szundi utáni `PLAY` ugyanott folytatja. Ha az ébresztő vezérlője megszakad, a zene a
+  szokásos módon szól tovább.
+- `PlaybackService`: a munkamenet csak engedéllyel rendelkező appnak (vagy a saját csomagnak) kínálja a parancsokat,
+  és minden parancsnál újra ellenőriz; `onDisconnected`; a „leállás a szám végén” és a kihúzás-kezelés ébresztés közben
+  az ébresztés beállítását követi.
+- Javítva közben: a Media3 1.11 riasztási hangfolyamra nem engedi az automatikus fókuszkezelést (kivétel a már előkészített
+  lejátszón) → saját fókuszkérés; elutasított `PLAY` nem némítja el a lejátszót.
+- Tesztek: JVM (új: `AlarmBridgeTest` +3), műszeres (új: `AlarmPlaybackSessionTest` – a valódi szolgáltatáson át:
+  a parancsok elérhetők, üres lista elutasítva, a hangerő változatlan), kézzel az ébresztővel együtt az emulátoron
+  (lásd a Headphone Alarm tesztjegyzőkönyvét: háttérből indulás zárolt képernyőn, oldalra húzás, szundi + folytatás,
+  lista vége, értesítés). Végeredmények: JVM 164/164, műszeres 54/54 a `Medium_Phone_API_37.0` emulátoron, lint 0 hiba.
+- Verzió 1.8.0 (versionCode 14). Kiadás még nincs – a felhasználó jóváhagyására vár.

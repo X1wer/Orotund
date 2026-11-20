@@ -56,6 +56,9 @@ Két dologra külön figyel:
   Kedvenceket ébresztőhangként játszhatja le. Ehhez az ébresztőben kell megadni a „Zengő lejátszási listáinak
   olvasása ébresztéshez” engedélyt; az ébresztő csak olvas (listák, dalok, mentett keverési/ismétlési mód),
   és csak a listákban szereplő számokat éri el.
+- **Az ébresztés a Zengőben szól (1.8.0):** a Headphone Alarm 1.2.0-tól a listát magában a Zengőben indítja el
+  (ugyanezzel az engedéllyel). Az ébresztés oldalra húzásakor a zene a Zengőben szól tovább; leállításkor vagy
+  szundinál megáll, és a Zengő visszaáll a saját ismétlési módjára, hangerejére és kimenetére.
 
 Részletek, ismert korlátok: [`docs/TESZTOSSZEFOGLALO.md`](docs/TESZTOSSZEFOGLALO.md).
 Követelmények: [`docs/KOVETELMENYEK.md`](docs/KOVETELMENYEK.md). Fejlesztési napló: [`docs/ALLAPOT.md`](docs/ALLAPOT.md).
